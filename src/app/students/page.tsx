@@ -24,6 +24,7 @@ import { dataStore } from "@/lib/db";
 import { Student, Course, Batch } from "@/types";
 import { subscribeRealtimeStudents } from "@/lib/firebase/services";
 import EditStudentModal from "@/components/modals/EditStudentModal";
+import { ConfirmModal } from "@/components/ui/FeedbackModal";
 
 export default function StudentsListPage() {
   const { institute, refreshInstitute } = useAuth();
@@ -42,6 +43,7 @@ export default function StudentsListPage() {
   const pageSize = 10;
 
   const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [studentToArchive, setStudentToArchive] = useState<Student | null>(null);
 
   const loadData = async () => {
     if (!institute) return;
@@ -88,10 +90,14 @@ export default function StudentsListPage() {
     };
   }, [institute, searchQuery, selectedStatus, selectedCourse, selectedBatch, currentPage]);
 
-  const handleArchive = async (studentId: string) => {
-    if (confirm("Are you sure you want to archive this student?")) {
-      await dataStore.archiveStudent(studentId);
+  const handleArchiveConfirm = async () => {
+    if (!studentToArchive) return;
+    try {
+      await dataStore.archiveStudent(studentToArchive.id);
+      setStudentToArchive(null);
       await loadData();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -319,7 +325,7 @@ export default function StudentsListPage() {
                         </button>
 
                         <button
-                          onClick={() => handleArchive(student.id)}
+                          onClick={() => setStudentToArchive(student)}
                           className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                           title="Archive Student"
                         >
@@ -371,6 +377,19 @@ export default function StudentsListPage() {
             loadData();
             refreshInstitute();
           }}
+        />
+      )}
+
+      {/* Archive Student Confirmation Modal */}
+      {studentToArchive && (
+        <ConfirmModal
+          isOpen={Boolean(studentToArchive)}
+          title="Archive Student"
+          message={`Are you sure you want to archive "${studentToArchive.fullName}" (${studentToArchive.enrollmentNo})? They will be moved to archived records and removed from active batches.`}
+          confirmText="Archive Student"
+          variant="danger"
+          onConfirm={handleArchiveConfirm}
+          onClose={() => setStudentToArchive(null)}
         />
       )}
     </div>

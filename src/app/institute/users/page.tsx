@@ -1,14 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { ShieldCheck, UserPlus, User, Mail, Shield } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { AlertModal } from "@/components/ui/FeedbackModal";
 
 export default function UsersRolesPage() {
   const { institute } = useAuth();
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const staff = [
-    { name: institute?.ownerName || "Vinkal Prajapati", email: institute?.email || "sbci.institute@gmail.com", role: "Primary Center Admin", status: "Active" },
+    { name: institute?.ownerName || "Institute Admin", email: institute?.email || "admin@example.com", role: "Primary Center Admin", status: "Active" },
     { name: "Er. Ramesh Verma", email: "ramesh.verma@example.com", role: "Senior Instructor & Marks Evaluator", status: "Active" },
     { name: "Pooja Singh", email: "pooja.singh@example.com", role: "Typing Lab Instructor", status: "Active" },
   ];
@@ -22,15 +24,15 @@ export default function UsersRolesPage() {
         </div>
 
         <button
-          onClick={() => alert("Staff invitation sent!")}
-          className="px-4 py-2 bg-[#6529E8] hover:bg-[#541FD0] text-white rounded-xl text-xs font-bold shadow-brand flex items-center gap-1.5"
+          onClick={() => setShowInviteModal(true)}
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
         >
           <UserPlus className="w-4 h-4" />
           <span>Invite Staff</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <table className="w-full text-left text-xs border-collapse">
           <thead className="bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase">
             <tr>
@@ -44,7 +46,7 @@ export default function UsersRolesPage() {
               <tr key={idx} className="hover:bg-slate-50">
                 <td className="p-3.5">
                   <p className="font-bold text-slate-900">{s.name}</p>
-                  <p className="text-[11px] text-slate-400">{s.email}</p>
+                  <p className="text-[11px] text-slate-400 font-mono">{s.email}</p>
                 </td>
                 <td className="p-3.5 font-semibold text-slate-700">{s.role}</td>
                 <td className="p-3.5">
@@ -57,6 +59,17 @@ export default function UsersRolesPage() {
           </tbody>
         </table>
       </div>
+
+      {showInviteModal && (
+        <AlertModal
+          isOpen={showInviteModal}
+          title="Staff Invitation Sent"
+          message="An invitation link with role-based access has been queued for your team member."
+          type="success"
+          buttonText="Done"
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
     </div>
   );
 }

@@ -15,11 +15,13 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { dataStore } from "@/lib/db";
 import { Certificate } from "@/types";
+import { ConfirmModal } from "@/components/ui/FeedbackModal";
 
 export default function CertificateHistoryPage() {
   const { institute } = useAuth();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [certToRevoke, setCertToRevoke] = useState<Certificate | null>(null);
 
   const loadCertificates = async () => {
     if (!institute) return;
@@ -31,11 +33,11 @@ export default function CertificateHistoryPage() {
     loadCertificates();
   }, [institute]);
 
-  const handleRevoke = async (certNumber: string) => {
-    if (confirm(`Are you sure you want to REVOKE certificate ${certNumber}? This will invalidate public QR verification.`)) {
-      await dataStore.revokeCertificate(certNumber);
-      await loadCertificates();
-    }
+  const handleRevokeConfirm = async () => {
+    if (!certToRevoke) return;
+    await dataStore.revokeCertificate(certToRevoke.certificateNumber);
+    setCertToRevoke(null);
+    await loadCertificates();
   };
 
   const filtered = certificates.filter(
@@ -57,7 +59,7 @@ export default function CertificateHistoryPage() {
 
         <Link
           href="/certificates/generate"
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#6529E8] hover:bg-[#541FD0] text-white text-xs font-bold rounded-xl shadow-brand"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all"
         >
           <Award className="w-4 h-4" />
           <span>Generate New Certificate</span>
@@ -139,8 +141,8 @@ export default function CertificateHistoryPage() {
 
                       {cert.status === "valid" && (
                         <button
-                          onClick={() => handleRevoke(cert.certificateNumber)}
-                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[11px] font-semibold"
+                          onClick={() => setCertToRevoke(cert)}
+                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[11px] font-semibold cursor-pointer"
                         >
                           Revoke
                         </button>
@@ -153,6 +155,18 @@ export default function CertificateHistoryPage() {
           </tbody>
         </table>
       </div>
+
+      {certToRevoke && (
+        <ConfirmModal
+          isOpen={Boolean(certToRevoke)}
+          title="Revoke Certificate"
+          message={`Are you sure you want to REVOKE certificate ${certToRevoke.certificateNumber} for ${certToRevoke.studentName}? This will permanently invalidate the certificate and any QR verification scanned by employers or students.`}
+          confirmText="Yes, Revoke Certificate"
+          variant="danger"
+          onConfirm={handleRevokeConfirm}
+          onClose={() => setCertToRevoke(null)}
+        />
+      )}
     </div>
   );
 }

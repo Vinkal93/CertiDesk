@@ -131,7 +131,7 @@ export interface AttendanceRecord {
 }
 
 export type TransactionType = 'credit' | 'debit';
-export type TransactionPurpose = 'admission' | 'profile_update' | 'recharge' | 'promo_credit' | 'refund';
+export type TransactionPurpose = 'admission' | 'profile_update' | 'certificate_gen' | 'marksheet_gen' | 'recharge' | 'promo_credit' | 'refund';
 export type TransactionStatus = 'success' | 'failed' | 'pending';
 
 export interface WalletTransaction {

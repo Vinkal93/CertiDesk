@@ -68,7 +68,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           href: "/students/add", 
           icon: UserPlus, 
           badge: "₹150", 
-          badgeColor: "bg-purple-100 text-[#6529E8]" 
+          badgeColor: "bg-slate-100 text-slate-800 font-mono" 
         },
         { name: "Import / Bulk Add", href: "/students/import", icon: FileSpreadsheet },
         { name: "Archived Students", href: "/students/archived", icon: Archive },
@@ -170,30 +170,22 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
       {/* Brand Header - Strict Separation between Institute & Super Admin */}
       <div className="p-4 border-b border-slate-100 bg-slate-50/40 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm flex-shrink-0 ${
-            isSuperAdminPortal 
-              ? "bg-gradient-to-br from-slate-900 to-indigo-950 text-amber-400 ring-2 ring-indigo-200/70" 
-              : "bg-gradient-to-br from-[#6529E8] to-[#8B5CF6] shadow-brand"
-          }`}>
+          <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-xs flex-shrink-0 border border-slate-800">
             {isSuperAdminPortal ? (
-              <ShieldCheck className="w-6 h-6 text-amber-300" />
+              <ShieldCheck className="w-5 h-5 text-amber-300" />
             ) : (
-              <Award className="w-6 h-6 text-amber-300" />
+              <Award className="w-5 h-5 text-white" />
             )}
           </div>
           <div className="overflow-hidden">
             <div className="flex items-center gap-1.5">
-              <h1 className="text-slate-900 font-extrabold text-lg leading-tight tracking-tight">CertiDesk</h1>
-              <span className={`font-black text-lg ${isSuperAdminPortal ? "text-indigo-600" : "text-[#6529E8]"}`}>
+              <h1 className="text-slate-900 font-black text-lg leading-tight tracking-tight">CertiDesk</h1>
+              <span className="font-black text-lg text-slate-900">
                 Pro
               </span>
             </div>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide uppercase ${
-                isSuperAdminPortal 
-                  ? "bg-indigo-50 text-indigo-700 border border-indigo-200/60" 
-                  : "bg-purple-50 text-purple-700 border border-purple-200/60"
-              }`}>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide uppercase bg-slate-100 text-slate-800 border border-slate-200">
                 {isSuperAdminPortal ? "Super Admin HQ" : "Institute Portal"}
               </span>
             </div>
@@ -209,15 +201,15 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                 <p className="text-[10px] text-slate-500 font-mono">Authorization: Super Admin</p>
               </div>
               <span className="flex h-2 w-2 relative" title="Super Admin Mode Active">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-900"></span>
               </span>
             </div>
           ) : (
             <div className="flex items-center justify-between w-full">
               <div className="truncate">
-                <p className="text-[11px] font-bold text-slate-800 truncate">{institute?.name || "SBCI Institute"}</p>
-                <p className="text-[10px] text-slate-500 font-mono">ID: {institute?.id || "SBCI1001"}</p>
+                <p className="text-[11px] font-bold text-slate-800 truncate">{institute?.name || "Institute"}</p>
+                <p className="text-[10px] text-slate-500 font-mono">ID: {institute?.id || "INST"}</p>
               </div>
               <span className="flex h-2 w-2 relative" title="Institute Active">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -238,9 +230,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
             onClick={onNavigate}
             className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 ${
               pathname === (isSuperAdminPortal ? "/su" : "/dashboard")
-                ? isSuperAdminPortal 
-                  ? "bg-slate-900 text-white shadow-sm" 
-                  : "bg-[#6529E8] text-white shadow-brand shadow-[#6529E8]/25"
+                ? "bg-slate-900 text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
           >
@@ -266,9 +256,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                     onClick={onNavigate}
                     className={`flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                       isActive
-                        ? isSuperAdminPortal
-                          ? "bg-slate-900 text-white shadow-sm"
-                          : "bg-[#6529E8] text-white shadow-sm shadow-[#6529E8]/20"
+                        ? "bg-slate-900 text-white shadow-xs"
                         : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                     }`}
                   >
@@ -276,9 +264,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                       <Icon className={`w-4 h-4 flex-shrink-0 ${
                         isActive 
                           ? "text-white" 
-                          : isSuperAdminPortal 
-                            ? "text-slate-500" 
-                            : "text-slate-400"
+                          : "text-slate-400"
                       }`} />
                       <span className="truncate">{item.name}</span>
                     </div>
@@ -322,7 +308,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           <Link
             href="/dashboard"
             onClick={onNavigate}
-            className="flex items-center justify-between w-full py-2 px-3 text-xs font-bold rounded-xl bg-purple-50 hover:bg-purple-100 text-[#6529E8] border border-purple-200 transition-all"
+            className="flex items-center justify-between w-full py-2 px-3 text-xs font-bold rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-xs"
           >
             <div className="flex items-center gap-2 truncate">
               <Building className="w-3.5 h-3.5" />
@@ -331,11 +317,10 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
             <ArrowUpRight className="w-3.5 h-3.5 opacity-80" />
           </Link>
         ) : (
-          /* For Institute Admin, standard Help & Support only (No Super Admin backdoor!) */
           <Link
             href="/support"
             onClick={onNavigate}
-            className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-[#6529E8] hover:bg-[#541FD0] text-white text-xs font-bold rounded-xl shadow-brand transition-all duration-150"
+            className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all duration-150"
           >
             <Headphones className="w-3.5 h-3.5" />
             <span>Help & Support</span>

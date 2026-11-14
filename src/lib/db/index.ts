@@ -563,6 +563,19 @@ class DataStore {
     data: Omit<Certificate, "id" | "certificateNumber" | "createdAt" | "status">
   ): Promise<Certificate> {
     const inst = await this.getInstitute(data.instituteId);
+    const certFee = inst?.settings?.certificateFee ?? 0;
+
+    if (certFee > 0) {
+      await this.deductWallet(
+        data.instituteId,
+        certFee,
+        "certificate_gen",
+        `Certificate generated: ${data.studentName} (${data.courseName})`,
+        data.studentId,
+        data.studentName
+      );
+    }
+
     const certNum = `CDP-${new Date().getFullYear()}-${String(this.certificates.length + 1042).padStart(4, "0")}`;
 
     const newCert: Certificate = {
@@ -584,7 +597,7 @@ class DataStore {
       targetType: "certificate",
       targetId: newCert.id,
       details: `Generated certificate ${certNum} for ${newCert.studentName} (${newCert.courseName})`,
-      chargeDeducted: 0,
+      chargeDeducted: certFee,
     });
 
     return { ...newCert };
@@ -615,6 +628,20 @@ class DataStore {
   async createMarksheet(
     data: Omit<Marksheet, "id" | "marksheetNumber" | "createdAt" | "status">
   ): Promise<Marksheet> {
+    const inst = await this.getInstitute(data.instituteId);
+    const msFee = inst?.settings?.marksheetFee ?? 0;
+
+    if (msFee > 0) {
+      await this.deductWallet(
+        data.instituteId,
+        msFee,
+        "marksheet_gen",
+        `Marksheet generated: ${data.studentName} (${data.courseName})`,
+        data.studentId,
+        data.studentName
+      );
+    }
+
     const msNum = `MS-${new Date().getFullYear()}-${String(this.marksheets.length + 1042).padStart(4, "0")}`;
 
     const newMs: Marksheet = {
@@ -701,7 +728,7 @@ class DataStore {
       totalBatches: batches.length,
       certificatesGenerated: certs.length,
       marksheetsGenerated: marks.length,
-      walletBalance: inst ? inst.walletBalance : 2850.0,
+      walletBalance: inst ? inst.walletBalance : 0,
       totalTransactions: txs.length,
     };
   }

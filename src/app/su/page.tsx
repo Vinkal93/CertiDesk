@@ -40,6 +40,7 @@ import {
   subscribeRealtimeAllStudents, 
   subscribeRealtimeAllTransactions 
 } from "@/lib/firebase/services";
+import { AlertModal } from "@/components/ui/FeedbackModal";
 
 export default function SuperAdminMasterControlPage() {
   const { user, switchInstitute } = useAuth();
@@ -68,6 +69,9 @@ export default function SuperAdminMasterControlPage() {
   const [showFeeModal, setShowFeeModal] = useState<Institute | null>(null);
   const [admissionFee, setAdmissionFee] = useState<number>(150);
   const [profileEditFee, setProfileEditFee] = useState<number>(100);
+  const [certificateFee, setCertificateFee] = useState<number>(0);
+  const [marksheetFee, setMarksheetFee] = useState<number>(0);
+  const [feedbackAlert, setFeedbackAlert] = useState<{ title: string; message: string; type: "success" | "error" | "info" } | null>(null);
 
   const [showAddInstituteModal, setShowAddInstituteModal] = useState(false);
   const [newInstName, setNewInstName] = useState("");
@@ -164,8 +168,17 @@ export default function SuperAdminMasterControlPage() {
       }
       setShowCreditModal(null);
       await loadData();
+      setFeedbackAlert({
+        title: "Wallet Updated",
+        message: `Successfully adjusted wallet for ${showCreditModal.name}.`,
+        type: "success"
+      });
     } catch (err: any) {
-      alert(err.message || "Failed to adjust wallet");
+      setFeedbackAlert({
+        title: "Adjustment Failed",
+        message: err.message || "Failed to adjust wallet",
+        type: "error"
+      });
     }
   };
 
@@ -178,12 +191,23 @@ export default function SuperAdminMasterControlPage() {
           ...showFeeModal.settings,
           admissionFee,
           profileEditFee,
+          certificateFee,
+          marksheetFee,
         },
       });
       setShowFeeModal(null);
       await loadData();
+      setFeedbackAlert({
+        title: "Fee Rules Applied",
+        message: `Updated pricing for ${showFeeModal.name}: Admission ₹${admissionFee}, Profile Edit ₹${profileEditFee}, Certificate ₹${certificateFee}, Marksheet ₹${marksheetFee}.`,
+        type: "success"
+      });
     } catch (err: any) {
-      alert(err.message || "Failed to save fee rules");
+      setFeedbackAlert({
+        title: "Update Failed",
+        message: err.message || "Failed to save fee rules",
+        type: "error"
+      });
     }
   };
 
@@ -231,7 +255,11 @@ export default function SuperAdminMasterControlPage() {
       setNewInstCity("");
       await loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to create institute");
+      setFeedbackAlert({
+        title: "Onboarding Failed",
+        message: err.message || "Failed to create institute",
+        type: "error"
+      });
     }
   };
 
@@ -243,8 +271,17 @@ export default function SuperAdminMasterControlPage() {
       setShowCredentialsModal(null);
       setEditPassword("");
       await loadData();
+      setFeedbackAlert({
+        title: "Credentials Updated",
+        message: `Password updated successfully for ${showCredentialsModal.name}.`,
+        type: "success"
+      });
     } catch (err: any) {
-      alert(err.message || "Failed to update password");
+      setFeedbackAlert({
+        title: "Password Update Failed",
+        message: err.message || "Failed to update password",
+        type: "error"
+      });
     }
   };
 
@@ -520,13 +557,15 @@ export default function SuperAdminMasterControlPage() {
                       <button
                         onClick={() => {
                           setShowFeeModal(inst);
-                          setAdmissionFee(inst.settings.admissionFee);
-                          setProfileEditFee(inst.settings.profileEditFee);
+                          setAdmissionFee(inst.settings.admissionFee ?? 150);
+                          setProfileEditFee(inst.settings.profileEditFee ?? 100);
+                          setCertificateFee(inst.settings.certificateFee ?? 0);
+                          setMarksheetFee(inst.settings.marksheetFee ?? 0);
                         }}
-                        className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 flex items-center gap-1"
+                        className="text-[11px] font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1"
                       >
                         <Sliders className="w-3 h-3" />
-                        <span>₹{inst.settings.admissionFee} Adm / ₹{inst.settings.profileEditFee} Edit</span>
+                        <span>₹{inst.settings.admissionFee} Adm / ₹{inst.settings.profileEditFee} Edit / ₹{inst.settings.certificateFee ?? 0} Cert</span>
                       </button>
                     </td>
                     <td className="p-3.5">
@@ -888,7 +927,7 @@ export default function SuperAdminMasterControlPage() {
                   type="number"
                   value={admissionFee}
                   onChange={(e) => setAdmissionFee(Number(e.target.value))}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold"
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold font-mono"
                 />
                 <span className="text-[10px] text-slate-400">Default: ₹150</span>
               </div>
@@ -899,9 +938,31 @@ export default function SuperAdminMasterControlPage() {
                   type="number"
                   value={profileEditFee}
                   onChange={(e) => setProfileEditFee(Number(e.target.value))}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold"
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold font-mono"
                 />
                 <span className="text-[10px] text-slate-400">Default: ₹100</span>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Certificate Generation Fee (₹)</label>
+                <input
+                  type="number"
+                  value={certificateFee}
+                  onChange={(e) => setCertificateFee(Number(e.target.value))}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold font-mono"
+                />
+                <span className="text-[10px] text-slate-400">0 for free generation</span>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Marksheet Generation Fee (₹)</label>
+                <input
+                  type="number"
+                  value={marksheetFee}
+                  onChange={(e) => setMarksheetFee(Number(e.target.value))}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold font-mono"
+                />
+                <span className="text-[10px] text-slate-400">0 for free generation</span>
               </div>
             </div>
 
@@ -1225,6 +1286,18 @@ export default function SuperAdminMasterControlPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Global In-App Feedback / Error / Success Modal */}
+      {feedbackAlert && (
+        <AlertModal
+          isOpen={Boolean(feedbackAlert)}
+          title={feedbackAlert.title}
+          message={feedbackAlert.message}
+          type={feedbackAlert.type}
+          buttonText="Understood"
+          onClose={() => setFeedbackAlert(null)}
+        />
       )}
     </div>
   );

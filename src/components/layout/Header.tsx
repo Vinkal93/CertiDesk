@@ -53,8 +53,8 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-xs flex-shrink-0 ${
               isSuperAdminPortal 
-                ? "bg-slate-900 text-amber-400 border border-slate-800 shadow-sm" 
-                : "bg-brand-50 border border-brand-100 text-brand-600"
+                ? "bg-slate-900 text-amber-400 border border-slate-800" 
+                : "bg-slate-100 border border-slate-200 text-slate-900"
             }`}>
               {isSuperAdminPortal ? (
                 <ShieldCheck className="w-5 h-5 text-amber-300" />
@@ -99,9 +99,9 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
 
           {/* Wallet Balance Card matching screenshot (Shown for Institute Portal) */}
           {!isSuperAdminPortal ? (
-            <div className="flex items-center bg-brand-50/60 border border-brand-100/80 rounded-xl px-3 py-1.5 gap-2.5 md:gap-3 shadow-xs">
+            <div className="flex items-center bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 gap-2.5 md:gap-3 shadow-xs">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-brand-100/70 flex items-center justify-center text-brand-600">
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700">
                   <Wallet className="w-4 h-4" />
                 </div>
                 <div>
@@ -115,7 +115,7 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
               </div>
               <button
                 onClick={() => setShowRechargeModal(true)}
-                className="bg-[#6529E8] hover:bg-[#541FD0] text-white text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-brand flex items-center gap-1 transition-all cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Recharge</span>
@@ -124,7 +124,7 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
           ) : (
             /* Super Admin Status Badge */
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+              <ShieldCheck className="w-4 h-4 text-slate-900" />
               <span>HQ Root Access</span>
             </div>
           )}
@@ -135,10 +135,8 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
               onClick={() => setShowUserDropdown(!showUserDropdown)}
               className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-xl transition-colors text-left"
             >
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm ${
-                isSuperAdminPortal ? "bg-slate-900 text-amber-300" : "bg-gradient-to-br from-brand-600 to-indigo-600"
-              }`}>
-                {isSuperAdminPortal ? "SU" : (institute?.ownerName ? institute.ownerName.charAt(0) : "V")}
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-xs bg-slate-900">
+                {isSuperAdminPortal ? "SU" : (institute?.ownerName ? institute.ownerName.charAt(0) : "A")}
               </div>
               <div className="hidden sm:block">
                 <p className="text-xs font-bold text-slate-900 leading-tight">
