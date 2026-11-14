@@ -90,19 +90,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8FC] flex flex-col justify-center items-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-200/90 p-8 space-y-6">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center items-center p-4 selection:bg-slate-900 selection:text-white">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-slate-200/90 p-8 space-y-6">
         
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#6529E8] to-[#8B5CF6] flex items-center justify-center text-white shadow-brand mx-auto">
-            <Award className="w-7 h-7 text-amber-300" />
-          </div>
+          <Link href="/" className="inline-flex items-center gap-2 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-[#0F172A] flex items-center justify-center text-white font-black shadow-sm">
+              <Award className="w-5 h-5 text-amber-300" />
+            </div>
+            <span className="font-extrabold text-xl text-slate-900 tracking-tight">CertiDesk Pro</span>
+          </Link>
+
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             Institute Sign In
           </h1>
           <p className="text-xs text-slate-500">
-            Sign in with your Institute ID or Email to manage students & certificates
+            Sign in with your Center ID or Email to access students & certificates.
           </p>
         </div>
 
@@ -125,7 +129,7 @@ export default function LoginPage() {
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder="e.g. SBCI1001 or institute@gmail.com"
-                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-[#6529E8] focus:border-transparent focus:outline-hidden transition-all text-slate-800"
+                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-slate-900 focus:border-transparent focus:outline-hidden transition-all text-slate-800"
                 required
               />
             </div>
@@ -137,7 +141,7 @@ export default function LoginPage() {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="font-semibold text-slate-700">Password</label>
-              <Link href="/support" className="text-[11px] text-[#6529E8] hover:underline font-medium">
+              <Link href="/support" className="text-[11px] text-slate-600 hover:text-slate-900 hover:underline font-medium">
                 Forgot password?
               </Link>
             </div>
@@ -148,13 +152,13 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your login password"
-                className="w-full pl-9 pr-10 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-[#6529E8] focus:border-transparent focus:outline-hidden transition-all text-slate-800"
+                className="w-full pl-9 pr-10 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-slate-900 focus:border-transparent focus:outline-hidden transition-all text-slate-800"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-hidden"
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-hidden cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -164,7 +168,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#6529E8] hover:bg-[#541FD0] text-white rounded-xl font-bold shadow-brand flex items-center justify-center gap-2 text-xs transition-all cursor-pointer transform hover:-translate-y-0.5"
+            className="w-full py-3 bg-[#0F172A] hover:bg-slate-800 text-white rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 text-xs transition-all cursor-pointer transform hover:-translate-y-0.5"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -179,7 +183,7 @@ export default function LoginPage() {
 
         <div className="text-center pt-2 text-xs text-slate-500 border-t border-slate-100">
           Want to register a new institute center?{" "}
-          <Link href="/register" className="text-[#6529E8] font-bold hover:underline">
+          <Link href="/register" className="text-slate-900 font-bold hover:underline">
             Register Center
           </Link>
         </div>
