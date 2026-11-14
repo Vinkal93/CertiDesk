@@ -32,8 +32,9 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
-  role: 'super_admin' | 'institute_admin' | 'staff';
+  role: 'super_admin' | 'institute_admin' | 'staff' | 'student';
   instituteId?: string; // empty if super_admin
+  studentId?: string; // set if student
   createdAt: string;
 }
 

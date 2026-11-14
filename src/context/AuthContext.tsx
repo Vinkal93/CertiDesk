@@ -15,8 +15,9 @@ interface AuthSessionData {
   uid: string;
   email: string;
   displayName: string;
-  role: "institute_admin" | "super_admin";
+  role: "institute_admin" | "super_admin" | "student";
   instituteId?: string;
+  studentId?: string;
 }
 
 interface AuthContextType {
@@ -27,7 +28,13 @@ interface AuthContextType {
   isFirebaseLive: boolean;
   refreshInstitute: () => Promise<void>;
   switchInstitute: (instituteId: string) => Promise<void>;
-  login: (email: string, role?: "institute_admin" | "super_admin", targetInstituteId?: string) => Promise<boolean>;
+  login: (
+    email: string, 
+    role?: "institute_admin" | "super_admin" | "student", 
+    targetInstituteId?: string,
+    targetStudentId?: string,
+    displayName?: string
+  ) => Promise<boolean>;
   loginFirebase: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -79,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           displayName: parsed.displayName,
           role: parsed.role,
           instituteId: parsed.instituteId,
+          studentId: parsed.studentId,
           createdAt: new Date().toISOString(),
         });
 
@@ -177,11 +185,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   };
 
-  const login = async (email: string, role?: "institute_admin" | "super_admin", targetInstituteId?: string) => {
+  const login = async (
+    email: string, 
+    role?: "institute_admin" | "super_admin" | "student", 
+    targetInstituteId?: string,
+    targetStudentId?: string,
+    displayName?: string
+  ) => {
     setLoading(true);
     try {
       const isSuper = email.toLowerCase().includes("admin@certidesk.pro") || email.toLowerCase().includes("super");
-      const resolvedRole: "institute_admin" | "super_admin" = role || (isSuper ? "super_admin" : "institute_admin");
+      const resolvedRole: "institute_admin" | "super_admin" | "student" = role || (isSuper ? "super_admin" : "institute_admin");
       
       const institutes = await dataStore.getAllInstitutes();
       const matched = institutes.find(
@@ -203,9 +217,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const session: AuthSessionData = {
         uid: `usr_${Date.now()}`,
         email,
-        displayName: resolvedRole === "super_admin" ? "Super Administrator" : (inst ? inst.ownerName : "Institute Admin"),
+        displayName: displayName || (resolvedRole === "super_admin" ? "Super Administrator" : (resolvedRole === "student" ? "Student" : (inst ? inst.ownerName : "Institute Admin"))),
         role: resolvedRole,
         instituteId: instId,
+        studentId: targetStudentId,
       };
 
       setUser({
@@ -214,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         displayName: session.displayName,
         role: session.role,
         instituteId: session.instituteId,
+        studentId: session.studentId,
         createdAt: new Date().toISOString(),
       });
 

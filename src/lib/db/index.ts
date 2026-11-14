@@ -340,6 +340,25 @@ class DataStore {
     return student ? { ...student } : null;
   }
 
+  async getStudentByEnrollmentNo(enrollmentNo: string): Promise<Student | null> {
+    const norm = enrollmentNo.trim().toLowerCase();
+    const student = this.students.find(
+      (s) => s.enrollmentNo.trim().toLowerCase() === norm
+    );
+    return student ? { ...student } : null;
+  }
+
+  async findStudentForLogin(identifier: string): Promise<Student | null> {
+    const norm = identifier.trim().toLowerCase();
+    const student = this.students.find(
+      (s) =>
+        s.enrollmentNo.trim().toLowerCase() === norm ||
+        s.email.trim().toLowerCase() === norm ||
+        s.mobile.replace(/\D/g, "").includes(norm.replace(/\D/g, ""))
+    );
+    return student ? { ...student } : null;
+  }
+
   async createStudent(
     data: Omit<Student, "id" | "enrollmentNo" | "createdAt" | "updatedAt">,
     skipFee = false
