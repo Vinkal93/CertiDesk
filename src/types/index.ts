@@ -15,6 +15,7 @@ export interface Institute {
   status: AccountStatus;
   ownerName: string; // e.g., 'Vinkal Prajapati'
   email: string;
+  password?: string; // Initial or admin-set password
   mobile: string;
   address: string;
   state: string;

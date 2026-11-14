@@ -206,7 +206,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
             <div className="flex items-center justify-between w-full">
               <div className="truncate">
                 <p className="text-[11px] font-bold text-slate-800 truncate">Platform Control Plane</p>
-                <p className="text-[10px] text-slate-500 font-mono">Master Route: /su</p>
+                <p className="text-[10px] text-slate-500 font-mono">Authorization: Super Admin</p>
               </div>
               <span className="flex h-2 w-2 relative" title="Super Admin Mode Active">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>

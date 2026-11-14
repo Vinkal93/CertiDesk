@@ -79,7 +79,7 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1 font-mono">
-                {isSuperAdminPortal ? "Platform Control Plane (/su)" : `Institute ID: ${institute?.id || "SBCI1001"}`}
+                {isSuperAdminPortal ? "Master Control Plane" : `Institute ID: ${institute?.id || "SBCI1001"}`}
               </p>
             </div>
           </div>

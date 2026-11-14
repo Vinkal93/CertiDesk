@@ -156,6 +156,14 @@ class DataStore {
     return { ...this.institutes[idx] };
   }
 
+  async updateInstitutePassword(id: string, newPassword: string): Promise<Institute> {
+    const idx = this.institutes.findIndex((i) => i.id === id);
+    if (idx === -1) throw new Error("Institute not found");
+    this.institutes[idx].password = newPassword;
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    return { ...this.institutes[idx] };
+  }
+
   // --- Wallet & Transaction Operations (Atomic & Rule-Enforced) ---
   async getWalletBalance(instituteId: string): Promise<number> {
     const inst = await this.getInstitute(instituteId);

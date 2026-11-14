@@ -27,7 +27,7 @@ interface AuthContextType {
   isFirebaseLive: boolean;
   refreshInstitute: () => Promise<void>;
   switchInstitute: (instituteId: string) => Promise<void>;
-  login: (email: string, role?: "institute_admin" | "super_admin") => Promise<boolean>;
+  login: (email: string, role?: "institute_admin" | "super_admin", targetInstituteId?: string) => Promise<boolean>;
   loginFirebase: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -177,15 +177,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   };
 
-  const login = async (email: string, role?: "institute_admin" | "super_admin") => {
+  const login = async (email: string, role?: "institute_admin" | "super_admin", targetInstituteId?: string) => {
     setLoading(true);
     try {
       const isSuper = email.toLowerCase().includes("admin@certidesk.pro") || email.toLowerCase().includes("super");
       const resolvedRole: "institute_admin" | "super_admin" = role || (isSuper ? "super_admin" : "institute_admin");
       
       const institutes = await dataStore.getAllInstitutes();
-      const matched = institutes.find((i) => i.email.toLowerCase() === email.toLowerCase());
-      const instId = resolvedRole === "super_admin" ? undefined : (matched ? matched.id : "SBCI1001");
+      const matched = institutes.find(
+        (i) => (targetInstituteId && i.id.toUpperCase() === targetInstituteId.toUpperCase()) ||
+               i.email.toLowerCase() === email.toLowerCase() ||
+               i.id.toUpperCase() === email.toUpperCase()
+      );
+      const instId = resolvedRole === "super_admin" ? undefined : (matched ? matched.id : (targetInstituteId || "SBCI1001"));
       
       let inst: Institute | null = null;
       if (instId) {

@@ -59,7 +59,7 @@ export default function SuperAdminLoginPage() {
             CertiDesk <span className="text-indigo-400">HQ</span> Control
           </h1>
           <p className="text-xs text-slate-400">
-            Super Administrator authentication portal (/su)
+            Super Administrator authentication portal
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export default function SuperAdminLoginPage() {
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <>
-                <span>Enter Master Control Plane (/su)</span>
+                <span>Enter Master Control Plane</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

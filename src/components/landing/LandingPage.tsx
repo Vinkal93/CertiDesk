@@ -367,175 +367,203 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Hero Right: Realistic 3D Laptop Mockup matching reference */}
+            {/* Hero Right: Pure CSS Sleek SaaS Showcase (No images/bezel) */}
             <div className="lg:col-span-7 flex justify-center lg:justify-end">
-              <div className="relative w-full max-w-[680px]">
+              <div className="relative w-full max-w-[650px]">
                 
-                {/* Laptop Outer Body */}
-                <div className="rounded-[22px] bg-[#1E2038] p-3 pt-3 shadow-[0_30px_90px_rgba(0,0,0,0.6)] border border-slate-700/80 ring-1 ring-white/10">
-                  
-                  {/* Top Bezel with Camera */}
-                  <div className="flex items-center justify-center pb-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center">
-                      <div className="w-1 h-1 rounded-full bg-blue-500/80" />
-                    </div>
+                {/* Decorative Ambient Background Glows */}
+                <div className="absolute -top-10 -right-10 w-72 h-72 bg-[#6529E8]/30 rounded-full blur-[90px] pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-indigo-500/20 rounded-full blur-[90px] pointer-events-none" />
+
+                {/* Floating Feature Chip: Top Right */}
+                <div className="hidden sm:flex absolute -top-5 -right-3 z-20 items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-slate-900/90 border border-purple-500/40 shadow-xl backdrop-blur-md text-xs text-white">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6529E8] to-purple-500 flex items-center justify-center text-amber-300 shadow-sm">
+                    <Award className="w-4 h-4" />
                   </div>
-
-                  {/* Laptop Screen Content (Actual Realistic CertiDesk Pro Dashboard) */}
-                  <div className="rounded-xl overflow-hidden bg-[#F7F8FC] border border-slate-300/60 shadow-inner text-slate-800 text-[11px] select-none">
-                    
-                    {/* Top Screen App Header */}
-                    <div className="h-10 bg-white border-b border-slate-200 px-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-lg bg-purple-100 text-[#6529E8] flex items-center justify-center">
-                          <Award className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-900 text-[10px]">SBCI Computer Institute</span>
-                            <span className="px-1.5 py-0.2 rounded-full text-[8px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Active
-                            </span>
-                          </div>
-                          <p className="text-[8px] text-slate-400 font-mono">Institute ID: SBCI1001</p>
-                        </div>
-                      </div>
-
-                      {/* Header Right */}
-                      <div className="flex items-center gap-2">
-                        <div className="bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md flex items-center gap-1.5">
-                          <Wallet className="w-3 h-3 text-[#6529E8]" />
-                          <div>
-                            <span className="text-[7px] uppercase font-bold text-slate-400 block leading-none">Wallet</span>
-                            <span className="text-[9px] font-bold text-slate-900 font-mono leading-none">₹ 2,850.00</span>
-                          </div>
-                          <span className="bg-[#6529E8] text-white text-[7px] font-bold px-1 py-0.5 rounded ml-1">
-                            + Recharge
-                          </span>
-                        </div>
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 text-white font-bold flex items-center justify-center text-[9px]">
-                          V
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Screen Body */}
-                    <div className="flex min-h-[300px]">
-                      
-                      {/* Left Mini Sidebar */}
-                      <div className="w-36 bg-[#10152B] text-slate-400 p-2 space-y-3 flex-shrink-0 border-r border-slate-800 hidden sm:block">
-                        <div className="bg-[#6529E8] text-white px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1.5">
-                          <Award className="w-3 h-3" />
-                          <span>Dashboard</span>
-                        </div>
-                        <div className="space-y-1 text-[8px]">
-                          <span className="text-[7px] uppercase tracking-wider text-slate-500 font-bold block px-1">Students</span>
-                          <div className="px-1.5 py-1 text-slate-300 hover:text-white flex items-center gap-1.5">
-                            <Users className="w-2.5 h-2.5" />
-                            <span>Students List</span>
-                          </div>
-                          <div className="px-1.5 py-1 text-slate-300 hover:text-white flex items-center gap-1.5">
-                            <Plus className="w-2.5 h-2.5" />
-                            <span>Add Student</span>
-                          </div>
-                          <span className="text-[7px] uppercase tracking-wider text-slate-500 font-bold block px-1 pt-1">Academic</span>
-                          <div className="px-1.5 py-1 text-slate-300 hover:text-white flex items-center gap-1.5">
-                            <BookOpen className="w-2.5 h-2.5" />
-                            <span>Courses</span>
-                          </div>
-                          <div className="px-1.5 py-1 text-slate-300 hover:text-white flex items-center gap-1.5">
-                            <Layers className="w-2.5 h-2.5" />
-                            <span>Batches</span>
-                          </div>
-                          <span className="text-[7px] uppercase tracking-wider text-slate-500 font-bold block px-1 pt-1">Certificates</span>
-                          <div className="px-1.5 py-1 text-slate-300 hover:text-white flex items-center gap-1.5">
-                            <Award className="w-2.5 h-2.5" />
-                            <span>Templates</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right Main Mockup Dashboard Area */}
-                      <div className="flex-1 p-3 space-y-2.5 overflow-hidden">
-                        
-                        {/* Welcome Banner */}
-                        <div className="bg-gradient-to-r from-[#10152B] via-[#1A184A] to-[#2B1B68] text-white p-3 rounded-xl flex items-center justify-between shadow-xs">
-                          <div className="space-y-1">
-                            <p className="font-extrabold text-[11px]">Welcome to CertiDesk Pro 👋</p>
-                            <p className="text-[8px] text-slate-300">Manage students, generate certificates, and grow your institute.</p>
-                            <div className="flex items-center gap-1.5 pt-1">
-                              <span className="bg-[#6529E8] text-white text-[8px] font-bold px-2 py-0.5 rounded">
-                                + Add Student (₹150)
-                              </span>
-                              <span className="bg-white/10 text-white text-[8px] font-bold px-2 py-0.5 rounded border border-white/20">
-                                Generate Certificate
-                              </span>
-                            </div>
-                          </div>
-                          <div className="w-12 h-10 rounded-lg bg-white/10 border border-white/20 p-1 flex items-center justify-center">
-                            <Award className="w-6 h-6 text-amber-300" />
-                          </div>
-                        </div>
-
-                        {/* Stat Widgets Grid */}
-                        <div className="grid grid-cols-4 gap-1.5">
-                          <div className="bg-white p-2 rounded-lg border border-slate-200">
-                            <span className="text-[7px] text-slate-400 block font-semibold">Total Students</span>
-                            <span className="font-black text-slate-900 text-xs">482</span>
-                            <span className="text-[7px] text-emerald-600 block">↑ +12 mo</span>
-                          </div>
-                          <div className="bg-white p-2 rounded-lg border border-slate-200">
-                            <span className="text-[7px] text-slate-400 block font-semibold">Certificates</span>
-                            <span className="font-black text-slate-900 text-xs">738</span>
-                            <span className="text-[7px] text-emerald-600 block">↑ +56 mo</span>
-                          </div>
-                          <div className="bg-white p-2 rounded-lg border border-slate-200">
-                            <span className="text-[7px] text-slate-400 block font-semibold">Batches</span>
-                            <span className="font-black text-slate-900 text-xs">24</span>
-                            <span className="text-[7px] text-purple-600 block">Active</span>
-                          </div>
-                          <div className="bg-white p-2 rounded-lg border border-slate-200">
-                            <span className="text-[7px] text-slate-400 block font-semibold">Wallet</span>
-                            <span className="font-black text-slate-900 text-xs">₹2,850</span>
-                            <span className="text-[7px] text-emerald-600 block">Active</span>
-                          </div>
-                        </div>
-
-                        {/* Recent Students Table Mockup */}
-                        <div className="bg-white rounded-lg border border-slate-200 p-2">
-                          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b text-[8px] font-bold">
-                            <span className="text-slate-800">Recent Students</span>
-                            <span className="text-[#6529E8]">View All →</span>
-                          </div>
-                          <div className="space-y-1 text-[8px]">
-                            <div className="flex items-center justify-between py-0.5">
-                              <span className="font-bold text-slate-800">Khushbu Prajapati</span>
-                              <span className="bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded font-bold">ADCA</span>
-                              <span className="text-slate-400 font-mono">SBCI/ADCA/0268</span>
-                              <span className="text-emerald-600 font-bold">Active</span>
-                            </div>
-                            <div className="flex items-center justify-between py-0.5">
-                              <span className="font-bold text-slate-800">Himanshu Vishwakarma</span>
-                              <span className="bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-bold">Typing</span>
-                              <span className="text-slate-400 font-mono">SBCI/TYP/0267</span>
-                              <span className="text-emerald-600 font-bold">Active</span>
-                            </div>
-                            <div className="flex items-center justify-between py-0.5">
-                              <span className="font-bold text-slate-800">Sneha Gupta</span>
-                              <span className="bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded font-bold">ADCA</span>
-                              <span className="text-slate-400 font-mono">SBCI/ADCA/0266</span>
-                              <span className="text-emerald-600 font-bold">Active</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  <div>
+                    <span className="font-bold text-[11px] text-white block">ADCA Certificate Generated</span>
+                    <span className="text-[9px] text-purple-200">Tamper-Proof QR Verified • 300 DPI</span>
                   </div>
                 </div>
 
-                {/* Laptop Base Stand */}
-                <div className="relative mx-auto w-5/6 h-3 bg-gradient-to-r from-slate-700 via-slate-600 to-slate-700 rounded-b-xl shadow-2xl border-t border-slate-800">
-                  <div className="mx-auto w-16 h-1 bg-slate-900 rounded-full" />
+                {/* Floating Feature Chip: Bottom Left */}
+                <div className="hidden sm:flex absolute -bottom-5 -left-4 z-20 items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-slate-900/90 border border-emerald-500/40 shadow-xl backdrop-blur-md text-xs text-white">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-[11px] text-emerald-300 block">₹150 Per Admission Only</span>
+                    <span className="text-[9px] text-slate-300">Zero Monthly Rental • Instant Deduct</span>
+                  </div>
+                </div>
+
+                {/* Main Glassmorphic Dashboard Window */}
+                <div className="relative z-10 rounded-3xl bg-slate-900/90 border border-purple-500/30 shadow-[0_20px_70px_rgba(101,41,232,0.35)] backdrop-blur-xl overflow-hidden text-slate-100 select-none">
+                  
+                  {/* macOS Style Window Title Bar */}
+                  <div className="px-4 py-3 bg-slate-950/80 border-b border-white/10 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full bg-rose-500/80 border border-rose-600 inline-block" />
+                      <span className="w-3 h-3 rounded-full bg-amber-500/80 border border-amber-600 inline-block" />
+                      <span className="w-3 h-3 rounded-full bg-emerald-500/80 border border-emerald-600 inline-block" />
+                    </div>
+
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] text-slate-300 font-mono">
+                      <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                      <span>certidesk.pro/dashboard</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                      <span className="hidden sm:inline">Live Sync</span>
+                    </div>
+                  </div>
+
+                  {/* Top Institute Context Bar */}
+                  <div className="p-4 bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-950/40 border-b border-white/5 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6529E8] to-[#8B5CF6] flex items-center justify-center text-white shadow-brand">
+                        <Award className="w-5 h-5 text-amber-300" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-white text-xs sm:text-sm">SBCI Computer Institute</h4>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            Active
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-purple-200/70 font-mono">Center ID: SBCI1001</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 flex items-center gap-2">
+                        <Wallet className="w-3.5 h-3.5 text-amber-300" />
+                        <div>
+                          <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold leading-none">Wallet</span>
+                          <span className="text-xs font-mono font-bold text-emerald-300 leading-none">₹ 2,850.00</span>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1.5 rounded-xl bg-[#6529E8] hover:bg-[#541FD0] text-white text-[10px] font-bold shadow-brand">
+                        + Recharge
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Dashboard Metrics Grid */}
+                  <div className="p-4 space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                      <div className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-500/40 transition-colors">
+                        <span className="text-[10px] text-slate-400 font-semibold block">Total Students</span>
+                        <div className="flex items-baseline justify-between mt-1">
+                          <span className="text-lg font-black text-white font-mono">482</span>
+                          <span className="text-[9px] text-emerald-400 font-bold">↑ +12 mo</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-500/40 transition-colors">
+                        <span className="text-[10px] text-slate-400 font-semibold block">Certificates</span>
+                        <div className="flex items-baseline justify-between mt-1">
+                          <span className="text-lg font-black text-white font-mono">738</span>
+                          <span className="text-[9px] text-emerald-400 font-bold">↑ +56 mo</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-500/40 transition-colors">
+                        <span className="text-[10px] text-slate-400 font-semibold block">Active Batches</span>
+                        <div className="flex items-baseline justify-between mt-1">
+                          <span className="text-lg font-black text-white font-mono">24</span>
+                          <span className="text-[9px] text-purple-300 font-bold">Running</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-500/40 transition-colors">
+                        <span className="text-[10px] text-slate-400 font-semibold block">Admission Fee</span>
+                        <div className="flex items-baseline justify-between mt-1">
+                          <span className="text-lg font-black text-white font-mono">₹ 150</span>
+                          <span className="text-[9px] text-indigo-300 font-bold">Prepaid</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Admission Preview Table */}
+                    <div className="rounded-2xl bg-white/5 border border-white/10 p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-3.5 h-3.5 text-purple-400" />
+                          <span className="font-bold text-white text-xs">Recent Admissions & Certificates</span>
+                        </div>
+                        <span className="text-[10px] text-purple-300 font-bold hover:underline cursor-pointer">
+                          View Roster →
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center font-bold text-[10px]">
+                              K
+                            </div>
+                            <div>
+                              <p className="font-bold text-white text-xs">Khushbu Prajapati</p>
+                              <p className="text-[9px] text-slate-400 font-mono">SBCI/ADCA/0268</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-bold">
+                              ADCA
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[9px] font-bold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Active
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center font-bold text-[10px]">
+                              H
+                            </div>
+                            <div>
+                              <p className="font-bold text-white text-xs">Himanshu Vishwakarma</p>
+                              <p className="text-[9px] text-slate-400 font-mono">SBCI/TYP/0267</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 text-[10px] font-bold">
+                              Typing
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[9px] font-bold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Active
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-[10px]">
+                              S
+                            </div>
+                            <div>
+                              <p className="font-bold text-white text-xs">Sneha Gupta</p>
+                              <p className="text-[9px] text-slate-400 font-mono">SBCI/ADCA/0266</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-bold">
+                              ADCA
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[9px] font-bold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Active
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1397,14 +1425,6 @@ export default function LandingPage() {
             >
               <span>Login to Portal</span>
             </Link>
-
-            <Link
-              href="/su"
-              className="px-4 py-3.5 bg-slate-900/60 hover:bg-slate-900 text-amber-300 font-bold text-xs rounded-xl border border-amber-400/30 transition-all flex items-center gap-1.5"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Super Admin HQ</span>
-            </Link>
           </div>
         </div>
       </section>
@@ -1458,14 +1478,13 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            {/* Col 4: Support & Admin */}
+            {/* Col 4: Account & Support */}
             <div className="space-y-3">
-              <h4 className="font-bold text-white uppercase text-[11px] tracking-wider">Account & HQ</h4>
+              <h4 className="font-bold text-white uppercase text-[11px] tracking-wider">Account & Support</h4>
               <ul className="space-y-2">
                 <li><Link href="/login" className="hover:text-white transition-colors">Institute Sign In</Link></li>
                 <li><Link href="/register" className="hover:text-white transition-colors">Register Center</Link></li>
-                <li><Link href="/su" className="text-amber-400 hover:text-amber-300 font-bold">Super Admin HQ (/su)</Link></li>
-                <li><Link href="/su/login" className="hover:text-white transition-colors">HQ Root Login</Link></li>
+                <li><Link href="/verification" className="hover:text-white transition-colors">Verify Certificate / QR</Link></li>
                 <li><Link href="/support" className="hover:text-white transition-colors">Help & WhatsApp Support</Link></li>
               </ul>
             </div>

@@ -120,7 +120,7 @@ export default function DashboardPage() {
             href="/su"
             className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
           >
-            <span>Return to /su HQ Control</span>
+            <span>Return to Master Control</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
         </div>
