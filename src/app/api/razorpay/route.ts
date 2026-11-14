@@ -5,14 +5,25 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { action, amount, orderId, paymentId, signature, instituteId } = body;
-
     const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
 
+    // Strict input validation
+    if (!action || typeof action !== "string") {
+      return NextResponse.json({ error: "Missing or invalid action parameter" }, { status: 400 });
+    }
+
     if (action === "create-order") {
-      // In development or when keys not supplied, return sandbox order id
+      const numAmount = Number(amount);
+      if (!numAmount || isNaN(numAmount) || numAmount < 100) {
+        return NextResponse.json({ error: "Minimum recharge amount is ₹100" }, { status: 400 });
+      }
+      if (!instituteId || typeof instituteId !== "string" || instituteId.trim().length === 0) {
+        return NextResponse.json({ error: "Missing institute ID for billing" }, { status: 400 });
+      }
+
       const order = {
         id: `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        amount: Math.round(Number(amount) * 100), // in paise
+        amount: Math.round(numAmount * 100), // in paise
         currency: "INR",
         receipt: `rcpt_${instituteId}_${Date.now()}`,
       };

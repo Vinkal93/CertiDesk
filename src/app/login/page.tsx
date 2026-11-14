@@ -30,11 +30,16 @@ export default function LoginPage() {
       }
 
       await login(email, role);
-      if (role === "super_admin") {
-        router.push("/su");
-      } else {
-        router.push("/dashboard");
+      
+      let redirectUrl = role === "super_admin" ? "/su" : "/dashboard";
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const queryRedirect = params.get("redirect");
+        if (queryRedirect) {
+          redirectUrl = queryRedirect;
+        }
       }
+      router.push(redirectUrl);
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
     } finally {

@@ -29,7 +29,13 @@ export default function SuperAdminLoginPage() {
       }
 
       await login(email, "super_admin");
-      router.push("/su");
+      
+      let redirectUrl = "/su";
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        redirectUrl = params.get("redirect") || "/su";
+      }
+      router.push(redirectUrl);
     } catch (err: any) {
       setError(err.message || "Failed to authenticate Super Admin");
     } finally {

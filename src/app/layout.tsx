@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import AuthGuard from "@/components/auth/AuthGuard";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { usePathname } from "next/navigation";
@@ -36,37 +37,39 @@ export default function RootLayout({
       </head>
       <body className="bg-[#F7F8FC] text-[#171A2B] antialiased">
         <AuthProvider>
-          {isPublicPage ? (
-            <div className="min-h-screen">{children}</div>
-          ) : (
-            <div className="flex min-h-screen bg-[#F7F8FC]">
-              {/* Fixed / Sticky Sidebar for Desktop - Never scrolls with page */}
-              <div className="hidden lg:block sticky top-0 h-screen flex-shrink-0 z-30">
-                <Sidebar />
-              </div>
-
-              {/* Mobile Sidebar Drawer */}
-              {sidebarOpen && (
-                <div className="fixed inset-0 z-50 flex lg:hidden">
-                  <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-xs"
-                    onClick={() => setSidebarOpen(false)}
-                  />
-                  <div className="relative z-10 h-screen">
-                    <Sidebar onNavigate={() => setSidebarOpen(false)} />
-                  </div>
+          <AuthGuard>
+            {isPublicPage ? (
+              <div className="min-h-screen">{children}</div>
+            ) : (
+              <div className="flex min-h-screen bg-[#F7F8FC]">
+                {/* Fixed / Sticky Sidebar for Desktop - Never scrolls with page */}
+                <div className="hidden lg:block sticky top-0 h-screen flex-shrink-0 z-30">
+                  <Sidebar />
                 </div>
-              )}
 
-              {/* Main Content Area - Scrolls independently */}
-              <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-                <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-                <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-                  {children}
-                </main>
+                {/* Mobile Sidebar Drawer */}
+                {sidebarOpen && (
+                  <div className="fixed inset-0 z-50 flex lg:hidden">
+                    <div
+                      className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+                      onClick={() => setSidebarOpen(false)}
+                    />
+                    <div className="relative z-10 h-screen">
+                      <Sidebar onNavigate={() => setSidebarOpen(false)} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Main Content Area - Scrolls independently */}
+                <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+                  <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+                  <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+                    {children}
+                  </main>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </AuthGuard>
         </AuthProvider>
       </body>
     </html>

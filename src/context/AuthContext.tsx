@@ -11,6 +11,14 @@ import {
   signOutFirebase
 } from "@/lib/firebase/services";
 
+interface AuthSessionData {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: "institute_admin" | "super_admin";
+  instituteId?: string;
+}
+
 interface AuthContextType {
   user: UserProfile | null;
   institute: Institute | null;
@@ -18,7 +26,6 @@ interface AuthContextType {
   walletBalance: number;
   isFirebaseLive: boolean;
   refreshInstitute: () => Promise<void>;
-  switchRole: (role: "institute_admin" | "super_admin") => void;
   switchInstitute: (instituteId: string) => Promise<void>;
   login: (email: string, role?: "institute_admin" | "super_admin") => Promise<boolean>;
   loginFirebase: (email: string, pass: string) => Promise<boolean>;
@@ -27,40 +34,75 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_STORAGE_KEY = "cdp_auth_session";
+
+function setAuthCookies(role: string) {
+  if (typeof document === "undefined") return;
+  document.cookie = `cdp_session=true; path=/; max-age=604800; SameSite=Lax`;
+  document.cookie = `cdp_role=${role}; path=/; max-age=604800; SameSite=Lax`;
+}
+
+function clearAuthCookies() {
+  if (typeof document === "undefined") return;
+  document.cookie = `cdp_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  document.cookie = `cdp_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [institute, setInstitute] = useState<Institute | null>(null);
-  const [walletBalance, setWalletBalance] = useState<number>(2850.0);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isFirebaseLive, setIsFirebaseLive] = useState<boolean>(true);
 
-  // Initialize data and seed Firestore
-  const loadData = async (instId = "SBCI1001", role: "institute_admin" | "super_admin" = "institute_admin") => {
+  // Load user session from storage or Firebase on startup
+  const restoreSession = async () => {
     try {
-      const inst = await dataStore.getInstitute(instId);
-      if (inst) {
-        setInstitute(inst);
-        setWalletBalance(inst.walletBalance);
+      if (typeof window === "undefined") return;
+
+      const storedSession = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (storedSession) {
+        const parsed: AuthSessionData = JSON.parse(storedSession);
+        
+        let inst: Institute | null = null;
+        if (parsed.instituteId) {
+          inst = await dataStore.getInstitute(parsed.instituteId);
+          if (inst) {
+            setInstitute(inst);
+            setWalletBalance(inst.walletBalance);
+          }
+        }
+
+        setUser({
+          uid: parsed.uid,
+          email: parsed.email,
+          displayName: parsed.displayName,
+          role: parsed.role,
+          instituteId: parsed.instituteId,
+          createdAt: new Date().toISOString(),
+        });
+
+        setAuthCookies(parsed.role);
+      } else {
+        // No session stored -> user remains NULL (Not authenticated)
+        setUser(null);
+        setInstitute(null);
+        clearAuthCookies();
       }
-      setUser({
-        uid: "usr_vinkal_prajapati",
-        email: inst ? inst.email : "admin@certidesk.pro",
-        displayName: role === "super_admin" ? "Super Administrator" : (inst ? inst.ownerName : "Vinkal Prajapati"),
-        role,
-        instituteId: role === "super_admin" ? undefined : instId,
-        createdAt: "2026-01-01T00:00:00Z",
-      });
     } catch (err) {
-      console.error("Auth init error:", err);
+      console.warn("Session restore error:", err);
+      setUser(null);
+      setInstitute(null);
+      clearAuthCookies();
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    restoreSession();
 
-    // Auto-seed Firebase Firestore if newly connected
+    // Auto-seed Firebase Firestore collections if empty
     seedFirestoreIfEmpty().then(() => {
       setIsFirebaseLive(true);
     }).catch(() => {
@@ -70,11 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for Firebase Auth state changes
     const unsubAuth = onFirebaseAuthStateChange((fbUser) => {
       if (fbUser) {
-        setUser((prev) => prev ? {
-          ...prev,
-          uid: fbUser.uid,
-          email: fbUser.email || prev.email,
-        } : null);
+        setUser((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            uid: fbUser.uid,
+            email: fbUser.email || prev.email,
+          };
+        });
       }
     });
 
@@ -108,40 +153,85 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const switchRole = (role: "institute_admin" | "super_admin") => {
-    if (!user) return;
-    setUser({
-      ...user,
-      role,
-      displayName: role === "super_admin" ? "Super Admin" : (institute?.ownerName || "Vinkal Prajapati"),
-      instituteId: role === "super_admin" ? undefined : (institute?.id || "SBCI1001"),
-    });
-  };
-
   const switchInstitute = async (instituteId: string) => {
     setLoading(true);
-    await loadData(instituteId, user?.role === "super_admin" ? "super_admin" : "institute_admin");
+    const inst = await dataStore.getInstitute(instituteId);
+    if (inst) {
+      setInstitute(inst);
+      setWalletBalance(inst.walletBalance);
+      if (user) {
+        const updatedUser: UserProfile = {
+          ...user,
+          instituteId,
+        };
+        setUser(updatedUser);
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
+          uid: updatedUser.uid,
+          email: updatedUser.email,
+          displayName: updatedUser.displayName,
+          role: updatedUser.role,
+          instituteId,
+        }));
+      }
+    }
+    setLoading(false);
   };
 
   const login = async (email: string, role?: "institute_admin" | "super_admin") => {
-    const isSuper = email.toLowerCase().includes("admin@certidesk.pro") || email.toLowerCase().includes("super");
-    const resolvedRole = role || (isSuper ? "super_admin" : "institute_admin");
-    const institutes = await dataStore.getAllInstitutes();
-    const matched = institutes.find((i) => i.email.toLowerCase() === email.toLowerCase());
-    const instId = matched ? matched.id : "SBCI1001";
-    await loadData(instId, resolvedRole);
-    return true;
+    setLoading(true);
+    try {
+      const isSuper = email.toLowerCase().includes("admin@certidesk.pro") || email.toLowerCase().includes("super");
+      const resolvedRole: "institute_admin" | "super_admin" = role || (isSuper ? "super_admin" : "institute_admin");
+      
+      const institutes = await dataStore.getAllInstitutes();
+      const matched = institutes.find((i) => i.email.toLowerCase() === email.toLowerCase());
+      const instId = resolvedRole === "super_admin" ? undefined : (matched ? matched.id : "SBCI1001");
+      
+      let inst: Institute | null = null;
+      if (instId) {
+        inst = await dataStore.getInstitute(instId);
+        if (inst) {
+          setInstitute(inst);
+          setWalletBalance(inst.walletBalance);
+        }
+      }
+
+      const session: AuthSessionData = {
+        uid: `usr_${Date.now()}`,
+        email,
+        displayName: resolvedRole === "super_admin" ? "Super Administrator" : (inst ? inst.ownerName : "Institute Admin"),
+        role: resolvedRole,
+        instituteId: instId,
+      };
+
+      setUser({
+        uid: session.uid,
+        email: session.email,
+        displayName: session.displayName,
+        role: session.role,
+        instituteId: session.instituteId,
+        createdAt: new Date().toISOString(),
+      });
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+      setAuthCookies(resolvedRole);
+
+      return true;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loginFirebase = async (email: string, pass: string) => {
     try {
       await signInFirebase(email, pass);
-      await login(email, "institute_admin");
+      const isSuper = email.toLowerCase().includes("admin@certidesk.pro") || email.toLowerCase().includes("super");
+      await login(email, isSuper ? "super_admin" : "institute_admin");
       return true;
-    } catch (e) {
+    } catch (e: any) {
       console.error("Firebase sign in error:", e);
-      // Fallback local login for smooth demo
-      await login(email, "institute_admin");
+      // Fallback
+      await login(email);
       return true;
     }
   };
@@ -154,6 +244,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setInstitute(null);
+    setWalletBalance(0);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    clearAuthCookies();
   };
 
   return (
@@ -165,7 +258,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         walletBalance,
         isFirebaseLive,
         refreshInstitute,
-        switchRole,
         switchInstitute,
         login,
         loginFirebase,
