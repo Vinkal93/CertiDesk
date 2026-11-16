@@ -216,28 +216,30 @@ export default function SuperAdminMasterControlPage() {
   const handleCreateInstituteHQ = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const created = await dataStore.createInstitute({
-        name: newInstName,
-        code: newInstName.slice(0, 4).toUpperCase(),
-        ownerName: newInstOwner,
-        email: newInstEmail,
-        password: newInstPassword || "Institute@123456",
-        mobile: newInstMobile,
-        address: `${newInstCity}, ${newInstState}`,
-        district: newInstCity,
-        state: newInstState,
-        pincode: "273001",
-        status: "active",
-        walletBalance: Number(newInstInitialWallet) || 1000,
-        assignedCourses: ["c-adca", "c-typ", "c-dca"],
-        settings: {
-          admissionFee: 150,
-          profileEditFee: 100,
-          certificateFee: 0,
-          marksheetFee: 0,
-          autoApproveStudents: true,
-        },
+      const res = await fetch("/api/admin/provision-institute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newInstName,
+          code: newInstName.slice(0, 4).toUpperCase(),
+          ownerName: newInstOwner,
+          email: newInstEmail,
+          password: newInstPassword || "Institute@123456",
+          mobile: newInstMobile,
+          address: `${newInstCity}, ${newInstState}`,
+          district: newInstCity,
+          state: newInstState,
+          pincode: "273001",
+          walletBalance: Number(newInstInitialWallet) || 1000,
+        }),
       });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to provision institute.");
+      }
+
+      const created = data.institute;
 
       setShowAddInstituteModal(false);
       setCreatedCredentialsAlert({
@@ -268,7 +270,21 @@ export default function SuperAdminMasterControlPage() {
   const handleSaveCredentials = async () => {
     if (!showCredentialsModal || !editPassword.trim()) return;
     try {
-      await dataStore.updateInstitutePassword(showCredentialsModal.id, editPassword.trim());
+      const res = await fetch("/api/admin/update-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instituteId: showCredentialsModal.id,
+          newPassword: editPassword.trim(),
+          email: showCredentialsModal.email,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to update credentials.");
+      }
+
       setShowCredentialsModal(null);
       setEditPassword("");
       await loadData();

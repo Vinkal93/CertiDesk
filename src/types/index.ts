@@ -354,7 +354,7 @@ export interface AuditLog {
   userId: string;
   userEmail: string;
   action: string;
-  targetType: 'student' | 'certificate' | 'marksheet' | 'batch' | 'wallet' | 'course';
+  targetType: 'student' | 'certificate' | 'marksheet' | 'batch' | 'wallet' | 'course' | 'institute' | 'security' | 'user';
   targetId: string;
   details: string;
   chargeDeducted?: number;

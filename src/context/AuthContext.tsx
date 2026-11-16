@@ -35,7 +35,11 @@ interface AuthContextType {
     targetStudentId?: string,
     displayName?: string
   ) => Promise<boolean>;
-  loginFirebase: (email: string, pass: string) => Promise<boolean>;
+  loginFirebase: (
+    email: string, 
+    pass: string, 
+    requestedRole?: "super_admin" | "institute_admin"
+  ) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -53,6 +57,7 @@ function clearAuthCookies() {
   if (typeof document === "undefined") return;
   document.cookie = `cdp_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
   document.cookie = `cdp_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  document.cookie = `cdp_institute=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -62,11 +67,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isFirebaseLive, setIsFirebaseLive] = useState<boolean>(true);
 
-  // Load user session from storage or Firebase on startup
+  // Load user session from server or storage on startup
   const restoreSession = async () => {
     try {
       if (typeof window === "undefined") return;
 
+      // 1. Check authoritative server cookie
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user) {
+            setUser(data.user);
+            setInstitute(data.institute || null);
+            if (data.institute) {
+              setWalletBalance(data.institute.walletBalance);
+            }
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
+            setAuthCookies(data.user.role);
+            return;
+          }
+        }
+      } catch (apiErr) {
+        console.warn("/api/auth/me call skipped:", apiErr);
+      }
+
+      // 2. Client fallback from stored session
       const storedSession = localStorage.getItem(AUTH_STORAGE_KEY);
       if (storedSession) {
         const parsed: AuthSessionData = JSON.parse(storedSession);
@@ -92,7 +118,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setAuthCookies(parsed.role);
       } else {
-        // No session stored -> user remains NULL (Not authenticated)
         setUser(null);
         setInstitute(null);
         clearAuthCookies();
@@ -118,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Listen for Firebase Auth state changes
-    const unsubAuth = onFirebaseAuthStateChange((fbUser) => {
+    const unsubAuth = onFirebaseAuthStateChange(async (fbUser) => {
       if (fbUser) {
         setUser((prev) => {
           if (!prev) return null;
@@ -162,25 +187,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const switchInstitute = async (instituteId: string) => {
+    // Only Super Admin is permitted to switch tenants
+    if (user && user.role !== "super_admin") return;
+
     setLoading(true);
     const inst = await dataStore.getInstitute(instituteId);
     if (inst) {
       setInstitute(inst);
       setWalletBalance(inst.walletBalance);
-      if (user) {
-        const updatedUser: UserProfile = {
-          ...user,
-          instituteId,
-        };
-        setUser(updatedUser);
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
-          uid: updatedUser.uid,
-          email: updatedUser.email,
-          displayName: updatedUser.displayName,
-          role: updatedUser.role,
-          instituteId,
-        }));
-      }
     }
     setLoading(false);
   };
@@ -194,47 +208,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     setLoading(true);
     try {
-      const isSuper = email.toLowerCase().includes("admin@certidesk.pro") || email.toLowerCase().includes("super");
-      const resolvedRole: "institute_admin" | "super_admin" | "student" = role || (isSuper ? "super_admin" : "institute_admin");
-      
-      const institutes = await dataStore.getAllInstitutes();
-      const matched = institutes.find(
-        (i) => (targetInstituteId && i.id.toUpperCase() === targetInstituteId.toUpperCase()) ||
-               i.email.toLowerCase() === email.toLowerCase() ||
-               i.id.toUpperCase() === email.toUpperCase()
-      );
-      const instId = resolvedRole === "super_admin" ? undefined : (matched ? matched.id : (targetInstituteId || "SBCI1001"));
-      
-      let inst: Institute | null = null;
-      if (instId) {
-        inst = await dataStore.getInstitute(instId);
-        if (inst) {
-          setInstitute(inst);
-          setWalletBalance(inst.walletBalance);
-        }
-      }
-
-      const session: AuthSessionData = {
-        uid: `usr_${Date.now()}`,
-        email,
-        displayName: displayName || (resolvedRole === "super_admin" ? "Super Administrator" : (resolvedRole === "student" ? "Student" : (inst ? inst.ownerName : "Institute Admin"))),
-        role: resolvedRole,
-        instituteId: instId,
-        studentId: targetStudentId,
-      };
-
-      setUser({
-        uid: session.uid,
-        email: session.email,
-        displayName: session.displayName,
-        role: session.role,
-        instituteId: session.instituteId,
-        studentId: session.studentId,
-        createdAt: new Date().toISOString(),
+      const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          requestedRole: role,
+          instituteId: targetInstituteId,
+          studentId: targetStudentId,
+          displayName,
+        }),
       });
 
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-      setAuthCookies(resolvedRole);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Authentication failed.");
+      }
+
+      setUser(data.user);
+      setInstitute(data.institute || null);
+      if (data.institute) {
+        setWalletBalance(data.institute.walletBalance);
+      }
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
+      setAuthCookies(data.user.role);
 
       return true;
     } finally {
@@ -242,23 +240,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginFirebase = async (email: string, pass: string) => {
+  const loginFirebase = async (
+    email: string, 
+    pass: string, 
+    requestedRole?: "super_admin" | "institute_admin"
+  ) => {
+    setLoading(true);
     try {
-      await signInFirebase(email, pass);
-      const isSuper = email.toLowerCase().includes("admin@certidesk.pro") || email.toLowerCase().includes("super");
-      await login(email, isSuper ? "super_admin" : "institute_admin");
+      // 1. Authenticate with real Firebase Auth
+      const fbUser = await signInFirebase(email, pass);
+      const idToken = await fbUser.getIdToken(true);
+
+      // 2. Synchronize server session & verify claims
+      const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idToken,
+          email: fbUser.email || email,
+          requestedRole,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Authentication failed on server.");
+      }
+
+      setUser(data.user);
+      setInstitute(data.institute || null);
+      if (data.institute) {
+        setWalletBalance(data.institute.walletBalance);
+      }
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
+      setAuthCookies(data.user.role);
+
       return true;
-    } catch (e: any) {
-      console.error("Firebase sign in error:", e);
-      // Fallback
-      await login(email);
-      return true;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
       await signOutFirebase();
+    } catch (e) {
+      // ignore
+    }
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch (e) {
       // ignore
     }

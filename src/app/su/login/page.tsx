@@ -5,13 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Lock, Mail, ArrowRight, Loader2, AlertCircle, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase/client";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loginFirebase } = useAuth();
   
   // Empty by default so user enters their own manual Firebase account credentials
   const [email, setEmail] = useState("");
@@ -35,41 +32,19 @@ export default function SuperAdminLoginPage() {
     }
 
     try {
-      let firebaseUid: string | null = null;
-      let authenticated = false;
-
-      // 1. Authenticate against real Firebase Auth (the manual user created in Firebase console)
+      // 1. Attempt Firebase Auth + Secure Session with Super Admin verification
       try {
-        const cred = await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
-        firebaseUid = cred.user.uid;
-        authenticated = true;
-
-        // Ensure user record in Firestore has super_admin role
-        try {
-          await setDoc(
-            doc(db, "users", cred.user.uid),
-            {
-              uid: cred.user.uid,
-              email: cred.user.email,
-              role: "super_admin",
-              updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-          );
-        } catch (dbErr) {
-          console.warn("Firestore user sync notice:", dbErr);
-        }
+        await loginFirebase(cleanEmail, cleanPass, "super_admin");
       } catch (fbErr: any) {
-        console.warn("Firebase direct sign-in error code:", fbErr.code, fbErr.message);
+        console.warn("Firebase direct sign-in response:", fbErr.code, fbErr.message);
 
-        // Fallback for default local administrator if offline or initial dev
+        // Fallback for default local administrator if offline or initial dev bootstrap
         if (
           cleanEmail.toLowerCase() === "admin@certidesk.pro" &&
           cleanPass === "Admin@123456"
         ) {
-          authenticated = true;
+          await login(cleanEmail, "super_admin");
         } else {
-          // Provide clear, actionable feedback for Firebase console users
           if (
             fbErr.code === "auth/invalid-credential" ||
             fbErr.code === "auth/user-not-found" ||
@@ -88,21 +63,16 @@ export default function SuperAdminLoginPage() {
         }
       }
 
-      if (authenticated) {
-        // Authenticate as Super Admin in App session and set secure cookies
-        await login(cleanEmail, "super_admin");
-
-        let redirectUrl = "/su";
-        if (typeof window !== "undefined") {
-          const params = new URLSearchParams(window.location.search);
-          const qRedirect = params.get("redirect");
-          if (qRedirect && qRedirect.startsWith("/su")) {
-            redirectUrl = qRedirect;
-          }
+      let redirectUrl = "/su";
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const qRedirect = params.get("redirect");
+        if (qRedirect && qRedirect.startsWith("/su")) {
+          redirectUrl = qRedirect;
         }
-
-        router.push(redirectUrl);
       }
+
+      router.push(redirectUrl);
     } catch (err: any) {
       setError(err.message || "Failed to authenticate Super Admin.");
     } finally {

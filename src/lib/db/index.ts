@@ -992,7 +992,7 @@ class DataStore {
     return this.auditLogs.filter((l) => l.instituteId === instituteId);
   }
 
-  private logAudit(entry: Omit<AuditLog, "id" | "timestamp">) {
+  logAudit(entry: Omit<AuditLog, "id" | "timestamp">) {
     const log: AuditLog = {
       ...entry,
       id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,

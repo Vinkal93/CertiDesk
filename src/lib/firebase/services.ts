@@ -317,36 +317,8 @@ export async function saveCertificateFirestore(cert: Certificate) {
 // --- Firebase Authentication Methods ---
 
 export async function signInFirebase(email: string, pass: string) {
-  try {
-    const cred = await signInWithEmailAndPassword(auth, email, pass);
-    return cred.user;
-  } catch (err: any) {
-    // If user is not yet created in the Firebase Auth console, create it automatically!
-    if (
-      err.code === "auth/user-not-found" || 
-      err.code === "auth/invalid-credential" ||
-      err.code === "auth/user-disabled"
-    ) {
-      try {
-        const newCred = await createUserWithEmailAndPassword(auth, email, pass);
-        const role = email.toLowerCase().includes("admin@certidesk.pro") || email.toLowerCase().includes("super")
-          ? "super_admin"
-          : "institute_admin";
-        
-        await setDoc(doc(db, "users", newCred.user.uid), {
-          uid: newCred.user.uid,
-          email: newCred.user.email,
-          role,
-          createdAt: serverTimestamp(),
-        }, { merge: true });
-
-        return newCred.user;
-      } catch (signupErr) {
-        throw err;
-      }
-    }
-    throw err;
-  }
+  const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
+  return cred.user;
 }
 
 export async function signUpFirebase(email: string, pass: string) {
