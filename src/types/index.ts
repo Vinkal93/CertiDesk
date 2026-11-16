@@ -153,7 +153,7 @@ export interface WalletTransaction {
 
 export interface TemplateElement {
   id: string;
-  type: 'text' | 'image' | 'qr';
+  type: 'text' | 'image' | 'qr' | 'seal';
   field: string; // e.g. 'student_name', 'course_name', 'qr_code'
   label: string;
   x: number; // percentage (0 - 100)

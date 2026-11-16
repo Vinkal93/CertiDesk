@@ -85,7 +85,14 @@ class DataStore {
       if (ms) this.marksheets = JSON.parse(ms);
 
       const tpl = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
-      if (tpl) this.templates = JSON.parse(tpl);
+      if (tpl) {
+        const parsed = JSON.parse(tpl);
+        if (!parsed.some((item: any) => item.id === "tpl-sbci-master")) {
+          this.templates = [initialTemplates[0], ...parsed];
+        } else {
+          this.templates = parsed;
+        }
+      }
 
       const att = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
       if (att) this.attendance = JSON.parse(att);

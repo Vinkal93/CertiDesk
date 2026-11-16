@@ -42,6 +42,8 @@ function GenerateCertificateContent() {
   const [percentage, setPercentage] = useState<number>(88.5);
   const [typingSpeed, setTypingSpeed] = useState<number>(48);
   const [typingAccuracy, setTypingAccuracy] = useState<number>(98);
+  const [sessionPeriod, setSessionPeriod] = useState<string>("01 July 2026 – 30 December 2026");
+  const [directorName, setDirectorName] = useState<string>("Vinkal Prajapati");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
   const [completionDate, setCompletionDate] = useState(new Date().toISOString().split("T")[0]);
 
@@ -64,12 +66,17 @@ function GenerateCertificateContent() {
       setTemplates(tplList);
       setCourses(crsList);
 
-      if (tplList.length > 0) setSelectedTemplateId(tplList[0].id);
+      const masterTpl = tplList.find((t) => t.id === "tpl-sbci-master") || tplList[0];
+      if (masterTpl) setSelectedTemplateId(masterTpl.id);
 
       if (preselectedStudentId) {
         setSelectedStudentId(preselectedStudentId);
       } else if (stList.length > 0) {
         setSelectedStudentId(stList[0].id);
+      }
+
+      if (institute?.ownerName) {
+        setDirectorName(institute.ownerName);
       }
     }
     load();
@@ -91,7 +98,7 @@ function GenerateCertificateContent() {
       .catch(console.error);
   }, [selectedStudentId, selectedTemplateId]);
 
-  const handleGenerateAndDownload = async () => {
+  const handleGenerateAndDownload = async (format: "pdf" | "png" = "pdf") => {
     if (!currentStudent || !institute || !currentTemplate) return;
     setIsGenerating(true);
     setError(null);
@@ -121,7 +128,7 @@ function GenerateCertificateContent() {
 
       setSuccessCertNumber(cert.certificateNumber);
 
-      // 2. Render high-res canvas and export to A4 PDF
+      // 2. Render high-res canvas and export to A4 PDF or PNG
       if (canvasRef.current) {
         const canvas = await html2canvas(canvasRef.current, {
           scale: 2, // 2x high resolution
@@ -129,36 +136,47 @@ function GenerateCertificateContent() {
           logging: false,
         });
 
-        const imgData = canvas.toDataURL("image/png");
-        const isLandscape = currentTemplate.orientation === "landscape";
-        const pdf = new jsPDF({
-          orientation: isLandscape ? "landscape" : "portrait",
-          unit: "pt",
-          format: "a4",
-        });
+        const filename = `${cert.certificateNumber}_${currentStudent.fullName.replace(/\s+/g, "_")}`;
 
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`${cert.certificateNumber}_${currentStudent.fullName.replace(/\s+/g, "_")}.pdf`);
+        if (format === "png") {
+          const link = document.createElement("a");
+          link.download = `${filename}.png`;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        } else {
+          const imgData = canvas.toDataURL("image/png");
+          const isLandscape = currentTemplate.orientation === "landscape";
+          const pdf = new jsPDF({
+            orientation: isLandscape ? "landscape" : "portrait",
+            unit: "pt",
+            format: "a4",
+          });
+
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`${filename}.pdf`);
+        }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to generate certificate PDF.");
+      setError(err.message || "Failed to generate certificate.");
     } finally {
       setIsGenerating(false);
     }
   };
 
   const certificateData = {
-    student_name: currentStudent?.fullName || "Student Name",
+    student_name: currentStudent?.fullName || "Khushbu",
     father_name: currentStudent?.fatherName || "Father Name",
     mother_name: currentStudent?.motherName || "Mother Name",
     enrollment_number: currentStudent?.enrollmentNo || "SBCI/ADCA/0268",
-    course_name: currentStudent?.courseName || "Advanced Diploma in Computer Application",
+    course_name: currentStudent?.courseName || "Advanced Diploma in Computer Application (ADCA)",
     course_duration: currentStudent?.courseDuration || "12 Months",
     institute_name: institute?.name || "SBCI Computer Institute",
     issue_date: issueDate,
     completion_date: completionDate,
+    session: sessionPeriod,
+    director_name: directorName,
     certificate_number: successCertNumber || tempCertNumber,
     grade,
     percentage,
@@ -373,26 +391,59 @@ function GenerateCertificateContent() {
                 />
               </div>
             </div>
+
+            <div>
+              <label className="font-semibold text-slate-600 block mb-1">Period / Session Overlay Text</label>
+              <input
+                type="text"
+                value={sessionPeriod}
+                onChange={(e) => setSessionPeriod(e.target.value)}
+                placeholder="01 July 2026 – 30 December 2026"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-600 block mb-1">Director Signature Name</label>
+              <input
+                type="text"
+                value={directorName}
+                onChange={(e) => setDirectorName(e.target.value)}
+                placeholder="Vinkal Prajapati"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
+              />
+            </div>
           </div>
 
-          {/* Action Button */}
-          <button
-            onClick={handleGenerateAndDownload}
-            disabled={isGenerating || !currentStudent}
-            className="w-full py-3.5 bg-[#6529E8] hover:bg-[#541FD0] disabled:opacity-50 text-white font-black text-sm rounded-2xl shadow-brand flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Generating High-Res PDF...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-5 h-5" />
-                <span>Generate & Download Certificate PDF</span>
-              </>
-            )}
-          </button>
+          {/* Action Buttons: PDF and High-Res PNG */}
+          <div className="space-y-2">
+            <button
+              onClick={() => handleGenerateAndDownload("pdf")}
+              disabled={isGenerating || !currentStudent}
+              className="w-full py-3.5 bg-[#6529E8] hover:bg-[#541FD0] disabled:opacity-50 text-white font-black text-sm rounded-2xl shadow-brand flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Processing Certificate...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5" />
+                  <span>Generate & Download Certificate PDF</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => handleGenerateAndDownload("png")}
+              disabled={isGenerating || !currentStudent}
+              className="w-full py-3 bg-white hover:bg-purple-50 text-brand-700 border-2 border-brand-200 hover:border-brand-300 font-bold text-xs rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+            >
+              <Download className="w-4 h-4 text-brand-600" />
+              <span>Download High-Resolution PNG Image</span>
+            </button>
+          </div>
         </div>
 
         {/* Right Live Visual Certificate Preview */}

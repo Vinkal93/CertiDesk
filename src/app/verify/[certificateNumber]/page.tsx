@@ -15,13 +15,16 @@ import {
   Search 
 } from "lucide-react";
 import { dataStore } from "@/lib/db";
-import { Certificate } from "@/types";
+import { Certificate, CertificateTemplate } from "@/types";
+import { CertificateCanvas } from "@/components/certificate/CertificateCanvas";
 
 export default function CertificateVerificationPage() {
   const params = useParams();
   const certNumber = params.certificateNumber as string;
 
   const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [template, setTemplate] = useState<CertificateTemplate | null>(null);
+  const [showFullDoc, setShowFullDoc] = useState(false);
   const [loading, setLoading] = useState(true);
   const [queried, setQueried] = useState(false);
 
@@ -32,6 +35,10 @@ export default function CertificateVerificationPage() {
       try {
         const found = await dataStore.getCertificateByNumber(certNumber);
         setCertificate(found);
+        if (found) {
+          const tpl = await dataStore.getTemplateById(found.templateId || "tpl-sbci-master");
+          setTemplate(tpl);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -171,6 +178,47 @@ export default function CertificateVerificationPage() {
                     <span className="font-semibold text-slate-700">{certificate.issueDate}</span>
                   </div>
                 </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => setShowFullDoc(!showFullDoc)}
+                    className="w-full py-2.5 bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold rounded-xl border border-brand-200 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Award className="w-4 h-4 text-brand-600" />
+                    <span>{showFullDoc ? "Hide Certificate Document" : "View Official Digital Certificate"}</span>
+                  </button>
+                </div>
+
+                {showFullDoc && template && (
+                  <div className="pt-4 border-t border-slate-200 space-y-3">
+                    <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider text-center">
+                      Official Issued Certificate Preview
+                    </p>
+                    <div className="overflow-x-auto bg-slate-100 p-2 sm:p-4 rounded-2xl flex justify-center border border-slate-200">
+                      <CertificateCanvas
+                        template={template}
+                        data={{
+                          student_name: certificate.studentName,
+                          father_name: certificate.fatherName,
+                          mother_name: certificate.motherName,
+                          enrollment_number: certificate.enrollmentNo,
+                          course_name: certificate.courseName,
+                          course_duration: certificate.courseDuration,
+                          institute_name: certificate.instituteName,
+                          issue_date: certificate.issueDate,
+                          completion_date: certificate.completionDate,
+                          certificate_number: certificate.certificateNumber,
+                          grade: certificate.grade,
+                          percentage: certificate.percentage,
+                          typing_speed: certificate.typingSpeed,
+                          typing_accuracy: certificate.typingAccuracy,
+                          qr_code: certificate.qrCodeDataUrl,
+                        }}
+                        scale={0.7}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 text-center">
                   This digital credential was verified live against the CertiDesk Pro tamper-evident ledger.
