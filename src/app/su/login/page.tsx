@@ -97,11 +97,25 @@ export default function SuperAdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#EEF2F6] flex items-center justify-center p-3 sm:p-6 lg:p-10 font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-[#EEF2F6] flex flex-col items-center justify-center p-3 sm:p-6 lg:p-10 font-sans selection:bg-blue-600 selection:text-white">
       {/* Background ambient lighting */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-blue-100/60 rounded-full blur-3xl opacity-70" />
         <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] bg-indigo-100/50 rounded-full blur-3xl opacity-60" />
+      </div>
+
+      {/* Top Header Navigation */}
+      <div className="max-w-[1080px] w-full mb-3 flex items-center justify-between">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950 transition-colors bg-white px-3.5 py-1.5 rounded-full border border-slate-200/90 shadow-2xs"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Home</span>
+        </Link>
+        <span className="text-[11px] font-semibold text-slate-500">
+          Super Admin Master Control
+        </span>
       </div>
 
       {/* Main 2-Column Split Card */}

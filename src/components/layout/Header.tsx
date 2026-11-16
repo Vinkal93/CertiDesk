@@ -164,6 +164,17 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
                 <div className="py-1">
                   {!isSuperAdminPortal ? (
                     <>
+                      {user?.role === "super_admin" && (
+                        <Link
+                          href="/su"
+                          onClick={() => setShowUserDropdown(false)}
+                          className="w-full text-left px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 flex items-center gap-2 font-bold border-b border-slate-100"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Switch to Super Admin HQ</span>
+                        </Link>
+                      )}
+
                       <Link
                         href="/institute/profile"
                         onClick={() => setShowUserDropdown(false)}
@@ -184,9 +195,9 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
                     </>
                   ) : (
                     <Link
-                      href="/"
+                      href="/dashboard"
                       onClick={() => setShowUserDropdown(false)}
-                      className="w-full text-left px-4 py-2 text-xs text-purple-700 hover:bg-purple-50 flex items-center gap-2 font-bold"
+                      className="w-full text-left px-4 py-2 text-xs text-slate-800 hover:bg-slate-50 flex items-center gap-2 font-bold"
                     >
                       <Building className="w-3.5 h-3.5" />
                       <span>Switch to Institute Portal</span>

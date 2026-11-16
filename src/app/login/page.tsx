@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Award, Lock, Building, ArrowRight, Loader2, AlertCircle, Eye, EyeOff, User, GraduationCap, Calendar } from "lucide-react";
+import { Award, Lock, Building, ArrowRight, ArrowLeft, Loader2, AlertCircle, Eye, EyeOff, User, GraduationCap, Calendar } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { dataStore } from "@/lib/db";
 import { signInFirebase } from "@/lib/firebase/services";
@@ -125,6 +125,20 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center items-center p-4 selection:bg-slate-900 selection:text-white">
+      {/* Top Header Navigation */}
+      <div className="max-w-md w-full mb-3 flex items-center justify-between">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950 transition-colors bg-white px-3 py-1.5 rounded-full border border-slate-200/90 shadow-2xs"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Home</span>
+        </Link>
+        <span className="text-[11px] font-semibold text-slate-400">
+          CertiDesk Pro • Center Portal
+        </span>
+      </div>
+
       <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-slate-200/90 p-8 space-y-6">
         
         {/* Brand Header */}

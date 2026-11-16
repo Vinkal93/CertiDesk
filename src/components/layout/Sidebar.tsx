@@ -316,6 +316,18 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
             </div>
             <ArrowUpRight className="w-3.5 h-3.5 opacity-80" />
           </Link>
+        ) : user?.role === "super_admin" ? (
+          <Link
+            href="/su"
+            onClick={onNavigate}
+            className="flex items-center justify-between w-full py-2 px-3 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-xs"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span className="truncate">Go to Super Admin HQ</span>
+            </div>
+            <ArrowUpRight className="w-3.5 h-3.5 opacity-80" />
+          </Link>
         ) : (
           <Link
             href="/support"
