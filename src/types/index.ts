@@ -87,6 +87,29 @@ export interface OnboardingState {
   updatedAt: string;
 }
 
+export interface SuperAdminPermissions {
+  canManageInstitutes: boolean;
+  canManageSuperAdmins: boolean;
+  canManageFinancials: boolean;
+  canManageBranding: boolean;
+  canManageAuditLogs: boolean;
+}
+
+export interface SuperAdminUser {
+  id: string;
+  name: string;
+  email: string;
+  password?: string;
+  pin: string; // 6-digit security PIN e.g. '630649'
+  role: 'super_admin';
+  isMaster: boolean; // Master Root Super Admin (vinkalp041@gmail.com)
+  status: 'active' | 'suspended';
+  permissions: SuperAdminPermissions;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;

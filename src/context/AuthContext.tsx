@@ -40,6 +40,11 @@ interface AuthContextType {
     pass: string, 
     requestedRole?: "super_admin" | "institute_admin"
   ) => Promise<boolean>;
+  loginSuperAdmin: (
+    email: string,
+    pass: string,
+    pin: string
+  ) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -282,6 +287,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginSuperAdmin = async (email: string, pass: string, pin: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/super-admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: pass.trim(),
+          pin: pin.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Super Admin authorization failed.");
+      }
+
+      setUser(data.user);
+      setInstitute(null);
+      setWalletBalance(0);
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
+      setAuthCookies("super_admin");
+
+      return true;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await signOutFirebase();
@@ -312,6 +348,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         switchInstitute,
         login,
         loginFirebase,
+        loginSuperAdmin,
         logout,
       }}
     >

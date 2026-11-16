@@ -82,5 +82,10 @@ service cloud.firestore {
       allow read: if isSuperAdmin();
       allow write: if false; // Server-only
     }
+
+    // Super Admins collection - strictly Super Admin & Server-only
+    match /super_admins/{adminId} {
+      allow read, write: if isSuperAdmin();
+    }
   }
 }

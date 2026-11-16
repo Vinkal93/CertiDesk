@@ -24,6 +24,7 @@ export interface AuthResult {
  * Super Admin designated emails that can automatically claim super_admin privilege
  */
 const DEFAULT_SUPER_ADMIN_EMAILS = [
+  "vinkalp041@gmail.com",
   "admin@certidesk.pro",
   "superadmin@certidesk.pro",
   "vinkalprajapati93@gmail.com",
@@ -38,6 +39,7 @@ export function isDesignatedSuperAdmin(email: string): boolean {
   return (
     DEFAULT_SUPER_ADMIN_EMAILS.includes(lower) ||
     envAdmins.includes(lower) ||
+    lower.includes("vinkalp041@gmail.com") ||
     lower.includes("admin@certidesk.pro")
   );
 }

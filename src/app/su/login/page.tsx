@@ -24,11 +24,13 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
-  const { login, loginFirebase } = useAuth();
+  const { loginSuperAdmin } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showPin, setShowPin] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +42,7 @@ export default function SuperAdminLoginPage() {
 
     const cleanEmail = email.trim();
     const cleanPass = password;
+    const cleanPin = pin.trim();
 
     if (!cleanEmail || !cleanPass) {
       setError("Please enter both your super admin email and password.");
@@ -47,37 +50,14 @@ export default function SuperAdminLoginPage() {
       return;
     }
 
-    try {
-      // 1. Authenticate against Firebase Auth and issue authoritative server session
-      try {
-        await loginFirebase(cleanEmail, cleanPass, "super_admin");
-      } catch (fbErr: any) {
-        console.warn("Firebase direct sign-in response:", fbErr.code, fbErr.message);
+    if (!cleanPin || cleanPin.length !== 6) {
+      setError("Please enter your 6-digit Master Security PIN (e.g. 630649).");
+      setLoading(false);
+      return;
+    }
 
-        // Fallback for platform root administrator in local/offline environment
-        if (
-          cleanEmail.toLowerCase() === "admin@certidesk.pro" &&
-          cleanPass === "Admin@123456"
-        ) {
-          await login(cleanEmail, "super_admin");
-        } else {
-          if (
-            fbErr.code === "auth/invalid-credential" ||
-            fbErr.code === "auth/user-not-found" ||
-            fbErr.code === "auth/wrong-password"
-          ) {
-            throw new Error(
-              "Invalid email or password. Please verify that this user account has been registered in your Firebase Console (Authentication > Users)."
-            );
-          } else if (fbErr.code === "auth/network-request-failed") {
-            throw new Error(
-              "Network request failed. Please check your internet connection."
-            );
-          } else {
-            throw new Error(fbErr.message || "Authentication failed.");
-          }
-        }
-      }
+    try {
+      await loginSuperAdmin(cleanEmail, cleanPass, cleanPin);
 
       let redirectUrl = "/su";
       if (typeof window !== "undefined") {
@@ -350,9 +330,43 @@ export default function SuperAdminLoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-hidden"
+                  className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-hidden cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* 6-Digit Master Security PIN Field */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700">
+                  Master Security PIN
+                </label>
+                <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                  Required 6-Digit 2FA
+                </span>
+              </div>
+              <div className="relative">
+                <ShieldCheck className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
+                <input
+                  type={showPin ? "text" : "password"}
+                  value={pin}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    setPin(val);
+                  }}
+                  placeholder="Enter 6-digit security PIN (e.g. 630649)"
+                  required
+                  maxLength={6}
+                  className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold tracking-widest text-slate-900 placeholder:text-slate-400 placeholder:font-sans placeholder:tracking-normal placeholder:font-normal focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-2xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-hidden cursor-pointer"
+                >
+                  {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>

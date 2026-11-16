@@ -154,10 +154,10 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
               <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-dropdown border border-slate-200 py-2 z-50">
                 <div className="px-4 py-2 border-b border-slate-100">
                   <p className="text-xs font-bold text-slate-900">
-                    {isSuperAdminPortal ? "Super Administrator" : (institute?.ownerName || "Institute Admin")}
+                    {isSuperAdminPortal ? (user?.displayName || "Super Administrator") : (institute?.ownerName || "Institute Admin")}
                   </p>
                   <p className="text-[11px] text-slate-500 truncate">
-                    {isSuperAdminPortal ? "admin@certidesk.pro" : (institute?.email || "sbci.institute@gmail.com")}
+                    {isSuperAdminPortal ? (user?.email || "vinkalp041@gmail.com") : (institute?.email || "sbci.institute@gmail.com")}
                   </p>
                 </div>
 

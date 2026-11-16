@@ -33,11 +33,15 @@ import {
   Check,
   FileCheck,
   Palette,
-  Clock
+  Clock,
+  Crown,
+  UserPlus,
+  Lock,
+  Shield
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { dataStore, PlatformSettings } from "@/lib/db";
-import { Institute, WalletTransaction, Student, Course, AuditLog } from "@/types";
+import { Institute, WalletTransaction, Student, Course, AuditLog, SuperAdminUser, AccountStatus } from "@/types";
 import { 
   subscribeRealtimeAllInstitutes, 
   subscribeRealtimeAllStudents, 
@@ -56,12 +60,52 @@ export default function SuperAdminMasterControlPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Active Tab: institutes | students | courses | financials | audit | branding
-  const [activeTab, setActiveTab] = useState<"institutes" | "students" | "courses" | "financials" | "audit" | "branding">("institutes");
+  // Active Tab: institutes | students | courses | financials | audit | branding | super_admins
+  const [activeTab, setActiveTab] = useState<"institutes" | "students" | "courses" | "financials" | "audit" | "branding" | "super_admins">("institutes");
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
   const [instituteFilter, setInstituteFilter] = useState("all");
+
+  // Super Admins Management State
+  const [superAdmins, setSuperAdmins] = useState<any[]>([]);
+  const [showCreateSuperAdminModal, setShowCreateSuperAdminModal] = useState(false);
+  const [showEditSuperAdminModal, setShowEditSuperAdminModal] = useState<any | null>(null);
+  const [newSuName, setNewSuName] = useState("");
+  const [newSuEmail, setNewSuEmail] = useState("");
+  const [newSuPassword, setNewSuPassword] = useState("");
+  const [newSuPin, setNewSuPin] = useState("");
+  const [newSuPermissions, setNewSuPermissions] = useState({
+    canManageInstitutes: true,
+    canManageSuperAdmins: true,
+    canManageFinancials: true,
+    canManageBranding: true,
+    canManageAuditLogs: true,
+  });
+
+  const [editSuName, setEditSuName] = useState("");
+  const [editSuStatus, setEditSuStatus] = useState<"active" | "suspended">("active");
+  const [editSuPassword, setEditSuPassword] = useState("");
+  const [editSuPin, setEditSuPin] = useState("");
+  const [editSuPermissions, setEditSuPermissions] = useState({
+    canManageInstitutes: true,
+    canManageSuperAdmins: true,
+    canManageFinancials: true,
+    canManageBranding: true,
+    canManageAuditLogs: true,
+  });
+
+  // Edit Institute Full Details Modal
+  const [showEditInstituteModal, setShowEditInstituteModal] = useState<Institute | null>(null);
+  const [editInstName, setEditInstName] = useState("");
+  const [editInstOwner, setEditInstOwner] = useState("");
+  const [editInstEmail, setEditInstEmail] = useState("");
+  const [editInstMobile, setEditInstMobile] = useState("");
+  const [editInstAddress, setEditInstAddress] = useState("");
+  const [editInstDistrict, setEditInstDistrict] = useState("");
+  const [editInstState, setEditInstState] = useState("");
+  const [editInstPincode, setEditInstPincode] = useState("");
+  const [editInstStatus, setEditInstStatus] = useState<AccountStatus>("active");
 
   // Platform Branding & Theme settings
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
@@ -122,6 +166,16 @@ export default function SuperAdminMasterControlPage() {
       setCourses(crs);
       setAuditLogs(logs);
       if (ps) setPlatformSettings(ps);
+
+      // Fetch Super Admins
+      fetch("/api/admin/super-admins")
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.superAdmins) {
+            setSuperAdmins(d.superAdmins);
+          }
+        })
+        .catch(console.warn);
     } catch (e) {
       console.error("Super Admin load error:", e);
     } finally {
@@ -342,6 +396,163 @@ export default function SuperAdminMasterControlPage() {
     }
   };
 
+  // Super Admin CRUD Handlers
+  const handleCreateSuperAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (!newSuPin || newSuPin.length !== 6) {
+        throw new Error("Security PIN must be exactly 6 numeric digits.");
+      }
+
+      const res = await fetch("/api/admin/super-admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          name: newSuName.trim(),
+          email: newSuEmail.trim(),
+          password: newSuPassword.trim(),
+          pin: newSuPin.trim(),
+          permissions: newSuPermissions,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to create Super Admin.");
+      }
+
+      setShowCreateSuperAdminModal(false);
+      setNewSuName("");
+      setNewSuEmail("");
+      setNewSuPassword("");
+      setNewSuPin("");
+      await loadData();
+
+      setFeedbackAlert({
+        title: "Super Admin Created",
+        message: `Successfully provisioned Super Admin ${data.admin.name} (${data.admin.email}).`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setFeedbackAlert({
+        title: "Creation Failed",
+        message: err.message || "Failed to create Super Admin account.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleUpdateSuperAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showEditSuperAdminModal) return;
+    try {
+      const res = await fetch("/api/admin/super-admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update",
+          id: showEditSuperAdminModal.id,
+          name: editSuName.trim(),
+          status: editSuStatus,
+          permissions: editSuPermissions,
+          newPassword: editSuPassword.trim() || undefined,
+          newPin: editSuPin.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to update Super Admin.");
+      }
+
+      setShowEditSuperAdminModal(null);
+      setEditSuPassword("");
+      setEditSuPin("");
+      await loadData();
+
+      setFeedbackAlert({
+        title: "Super Admin Updated",
+        message: `Updated account details for ${showEditSuperAdminModal.name}.`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setFeedbackAlert({
+        title: "Update Failed",
+        message: err.message || "Failed to update Super Admin.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleDeleteSuperAdmin = async (admin: any) => {
+    if (!confirm(`Are you sure you want to delete Super Admin "${admin.name}" (${admin.email})?`)) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/super-admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          id: admin.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to delete Super Admin.");
+      }
+
+      await loadData();
+      setFeedbackAlert({
+        title: "Super Admin Deleted",
+        message: `Account for ${admin.name} deleted successfully.`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setFeedbackAlert({
+        title: "Deletion Failed",
+        message: err.message || "Failed to delete Super Admin.",
+        type: "error",
+      });
+    }
+  };
+
+  // Full Institute Details Edit Handler
+  const handleSaveInstituteDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showEditInstituteModal) return;
+    try {
+      await dataStore.updateInstitute(showEditInstituteModal.id, {
+        name: editInstName.trim(),
+        ownerName: editInstOwner.trim(),
+        email: editInstEmail.trim(),
+        mobile: editInstMobile.trim(),
+        address: editInstAddress.trim(),
+        district: editInstDistrict.trim(),
+        state: editInstState.trim(),
+        pincode: editInstPincode.trim(),
+        status: editInstStatus,
+      });
+
+      setShowEditInstituteModal(null);
+      await loadData();
+
+      setFeedbackAlert({
+        title: "Institute Updated",
+        message: `Successfully saved profile and contact details for ${editInstName}.`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setFeedbackAlert({
+        title: "Update Failed",
+        message: err.message || "Failed to save institute details.",
+        type: "error",
+      });
+    }
+  };
+
   // Filters
   const filteredInstitutes = institutes.filter(
     (i) =>
@@ -548,6 +759,18 @@ export default function SuperAdminMasterControlPage() {
           <Palette className="w-4 h-4 text-purple-400" />
           <span>Branding & Theme Studio</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab("super_admins")}
+          className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "super_admins"
+              ? "bg-slate-900 text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+        >
+          <Crown className="w-4 h-4 text-amber-400" />
+          <span>Super Admins Control ({superAdmins.length})</span>
+        </button>
       </div>
 
       {/* TAB 1: INSTITUTES MANAGEMENT */}
@@ -710,6 +933,27 @@ export default function SuperAdminMasterControlPage() {
                             Suspend
                           </button>
                         )}
+
+                        {/* Edit Institute Details */}
+                        <button
+                          onClick={() => {
+                            setShowEditInstituteModal(inst);
+                            setEditInstName(inst.name);
+                            setEditInstOwner(inst.ownerName);
+                            setEditInstEmail(inst.email);
+                            setEditInstMobile(inst.mobile);
+                            setEditInstAddress(inst.address);
+                            setEditInstDistrict(inst.district);
+                            setEditInstState(inst.state);
+                            setEditInstPincode(inst.pincode);
+                            setEditInstStatus(inst.status);
+                          }}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10px] border border-slate-200 cursor-pointer flex items-center gap-1"
+                          title="Edit full institute profile & details"
+                        >
+                          <Edit2 className="w-3 h-3 text-slate-500" />
+                          <span>Edit</span>
+                        </button>
 
                         {/* Login as Institute */}
                         <button
@@ -1182,7 +1426,178 @@ export default function SuperAdminMasterControlPage() {
         </div>
       )}
 
-      {/* MODAL 1: WALLET ADJUSTMENT & PROMO CREDIT */}
+      {/* TAB 7: SUPER ADMINS MASTER CONTROL */}
+      {activeTab === "super_admins" && (
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-card p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-500" />
+                <h2 className="text-base font-extrabold text-slate-900">
+                  Super Admins Access & Governance
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Manage platform root administrators with mandatory 6-digit security PIN verification and custom privileges.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setNewSuName("");
+                setNewSuEmail("");
+                setNewSuPassword("");
+                setNewSuPin("");
+                setShowCreateSuperAdminModal(true);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4 text-amber-400" />
+              <span>+ Provision Super Admin</span>
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="p-3.5">Administrator</th>
+                  <th className="p-3.5">Authority Tier</th>
+                  <th className="p-3.5">Security PIN</th>
+                  <th className="p-3.5">Status</th>
+                  <th className="p-3.5">Assigned Permissions</th>
+                  <th className="p-3.5">Created / Active</th>
+                  <th className="p-3.5 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {superAdmins.map((admin) => {
+                  const isRootMaster = admin.isMaster || admin.email?.toLowerCase() === "vinkalp041@gmail.com";
+                  return (
+                    <tr key={admin.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
+                            isRootMaster
+                              ? "bg-amber-100 text-amber-800 border border-amber-300"
+                              : "bg-slate-100 text-slate-700 border border-slate-200"
+                          }`}>
+                            {isRootMaster ? <Crown className="w-4 h-4 text-amber-600 fill-amber-500/20" /> : <Shield className="w-4 h-4 text-slate-600" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold text-slate-900">{admin.name}</p>
+                              {isRootMaster && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-extrabold border border-amber-200">
+                                  Root Master
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-mono">{admin.email}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="p-3.5">
+                        <span className="font-semibold text-slate-800">
+                          {isRootMaster ? "Platform Root Master" : "Delegated Super Admin"}
+                        </span>
+                        <p className="text-[10px] text-slate-400">Global Multi-Tenant Authority</p>
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-mono font-bold text-[11px] border border-slate-200">
+                          <Lock className="w-3 h-3 text-slate-400" />
+                          <span>{admin.pinMasked || "••••49"}</span>
+                        </div>
+                      </td>
+
+                      <td className="p-3.5">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          admin.status === "active"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-rose-50 text-rose-700 border border-rose-200"
+                        }`}>
+                          {admin.status?.toUpperCase() || "ACTIVE"}
+                        </span>
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {admin.permissions?.canManageInstitutes && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-semibold border border-blue-200">
+                              Institutes
+                            </span>
+                          )}
+                          {admin.permissions?.canManageSuperAdmins && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[10px] font-semibold border border-purple-200">
+                              Super Admins
+                            </span>
+                          )}
+                          {admin.permissions?.canManageFinancials && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200">
+                              Wallets
+                            </span>
+                          )}
+                          {admin.permissions?.canManageBranding && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-semibold border border-amber-200">
+                              Branding
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="p-3.5 text-slate-500 text-[11px]">
+                        <div>{admin.createdAt ? new Date(admin.createdAt).toLocaleDateString() : "Master"}</div>
+                        {admin.lastLogin && (
+                          <div className="text-[10px] text-slate-400">
+                            Last: {new Date(admin.lastLogin).toLocaleDateString()}
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="p-3.5 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setShowEditSuperAdminModal(admin);
+                              setEditSuName(admin.name);
+                              setEditSuStatus(admin.status || "active");
+                              setEditSuPassword("");
+                              setEditSuPin("");
+                              setEditSuPermissions(admin.permissions || {
+                                canManageInstitutes: true,
+                                canManageSuperAdmins: true,
+                                canManageFinancials: true,
+                                canManageBranding: true,
+                                canManageAuditLogs: true,
+                              });
+                            }}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10px] border border-slate-200 cursor-pointer flex items-center gap-1"
+                          >
+                            <Edit2 className="w-3 h-3 text-slate-500" />
+                            <span>Edit</span>
+                          </button>
+
+                          {!isRootMaster && (
+                            <button
+                              onClick={() => handleDeleteSuperAdmin(admin)}
+                              className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg text-[10px] border border-rose-200 cursor-pointer flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-600" />
+                              <span>Delete</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {showCreditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
@@ -1659,6 +2074,418 @@ export default function SuperAdminMasterControlPage() {
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PROVISION NEW SUPER ADMIN */}
+      {showCreateSuperAdminModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                  <Crown className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Provision Super Admin</h3>
+                  <p className="text-[10px] text-slate-500">Requires 6-Digit Master Security PIN</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateSuperAdminModal(false)}
+                className="text-slate-400 hover:text-slate-700 text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSuperAdmin} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newSuName}
+                  onChange={(e) => setNewSuName(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                  placeholder="e.g. Rahul Sharma"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={newSuEmail}
+                  onChange={(e) => setNewSuEmail(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium font-mono"
+                  placeholder="admin@platform.com"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={newSuPassword}
+                    onChange={(e) => setNewSuPassword(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                    placeholder="Min 6 chars"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">6-Digit PIN</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={newSuPin}
+                    onChange={(e) => setNewSuPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-mono font-bold tracking-widest text-slate-900"
+                    placeholder="630649"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <p className="font-bold text-slate-700 mb-2">Assigned Permissions:</p>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={newSuPermissions.canManageInstitutes}
+                      onChange={(e) => setNewSuPermissions({ ...newSuPermissions, canManageInstitutes: e.target.checked })}
+                      className="rounded text-indigo-600"
+                    />
+                    <span>Manage Institutes & Centers</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={newSuPermissions.canManageSuperAdmins}
+                      onChange={(e) => setNewSuPermissions({ ...newSuPermissions, canManageSuperAdmins: e.target.checked })}
+                      className="rounded text-indigo-600"
+                    />
+                    <span>Provision & Edit Other Super Admins</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={newSuPermissions.canManageFinancials}
+                      onChange={(e) => setNewSuPermissions({ ...newSuPermissions, canManageFinancials: e.target.checked })}
+                      className="rounded text-indigo-600"
+                    />
+                    <span>Manage Wallet Balances & Platform Ledger</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={newSuPermissions.canManageBranding}
+                      onChange={(e) => setNewSuPermissions({ ...newSuPermissions, canManageBranding: e.target.checked })}
+                      className="rounded text-indigo-600"
+                    />
+                    <span>Customize Platform Branding & Themes</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateSuperAdminModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl cursor-pointer shadow-md"
+                >
+                  Create Super Admin
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT SUPER ADMIN */}
+      {showEditSuperAdminModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Edit Super Admin</h3>
+                <p className="text-[10px] text-slate-500">{showEditSuperAdminModal.email}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditSuperAdminModal(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateSuperAdmin} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editSuName}
+                  onChange={(e) => setEditSuName(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Account Status</label>
+                <select
+                  value={editSuStatus}
+                  onChange={(e) => setEditSuStatus(e.target.value as any)}
+                  disabled={showEditSuperAdminModal.isMaster}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                >
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+                {showEditSuperAdminModal.isMaster && (
+                  <p className="text-[10px] text-amber-600 mt-1">Root Master Super Admin status is protected.</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Reset Password</label>
+                  <input
+                    type="password"
+                    value={editSuPassword}
+                    onChange={(e) => setEditSuPassword(e.target.value)}
+                    placeholder="Leave blank to keep"
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Reset 6-Digit PIN</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={editSuPin}
+                    onChange={(e) => setEditSuPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Leave blank"
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-mono font-bold tracking-widest text-slate-900 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <p className="font-bold text-slate-700 mb-2">Permissions:</p>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={editSuPermissions.canManageInstitutes}
+                      onChange={(e) => setEditSuPermissions({ ...editSuPermissions, canManageInstitutes: e.target.checked })}
+                      className="rounded text-indigo-600"
+                    />
+                    <span>Manage Institutes & Centers</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={editSuPermissions.canManageSuperAdmins}
+                      onChange={(e) => setEditSuPermissions({ ...editSuPermissions, canManageSuperAdmins: e.target.checked })}
+                      className="rounded text-indigo-600"
+                    />
+                    <span>Provision & Edit Other Super Admins</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={editSuPermissions.canManageFinancials}
+                      onChange={(e) => setEditSuPermissions({ ...editSuPermissions, canManageFinancials: e.target.checked })}
+                      className="rounded text-indigo-600"
+                    />
+                    <span>Manage Wallet Balances & Platform Ledger</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={editSuPermissions.canManageBranding}
+                      onChange={(e) => setEditSuPermissions({ ...editSuPermissions, canManageBranding: e.target.checked })}
+                      className="rounded text-indigo-600"
+                    />
+                    <span>Customize Platform Branding & Themes</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowEditSuperAdminModal(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl cursor-pointer shadow-md"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT INSTITUTE FULL DETAILS */}
+      {showEditInstituteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Edit Institute Profile</h3>
+                <p className="text-[10px] text-[#6529E8] font-mono font-bold">{showEditInstituteModal.id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditInstituteModal(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveInstituteDetails} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Institute Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editInstName}
+                    onChange={(e) => setEditInstName(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Owner / Director</label>
+                  <input
+                    type="text"
+                    required
+                    value={editInstOwner}
+                    onChange={(e) => setEditInstOwner(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Official Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={editInstEmail}
+                    onChange={(e) => setEditInstEmail(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={editInstMobile}
+                    onChange={(e) => setEditInstMobile(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Complete Address</label>
+                <input
+                  type="text"
+                  required
+                  value={editInstAddress}
+                  onChange={(e) => setEditInstAddress(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">District / City</label>
+                  <input
+                    type="text"
+                    required
+                    value={editInstDistrict}
+                    onChange={(e) => setEditInstDistrict(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">State</label>
+                  <input
+                    type="text"
+                    required
+                    value={editInstState}
+                    onChange={(e) => setEditInstState(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">PIN Code</label>
+                  <input
+                    type="text"
+                    required
+                    value={editInstPincode}
+                    onChange={(e) => setEditInstPincode(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Account Status</label>
+                <select
+                  value={editInstStatus}
+                  onChange={(e) => setEditInstStatus(e.target.value as any)}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium"
+                >
+                  <option value="active">Active (Full Access)</option>
+                  <option value="pending">Pending Approval</option>
+                  <option value="suspended">Suspended (Access Frozen)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowEditInstituteModal(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-md"
+                >
+                  Save Institute Profile
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

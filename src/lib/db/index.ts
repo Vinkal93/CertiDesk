@@ -14,7 +14,8 @@ import {
   AccountStatus,
   TransactionPurpose,
   StudentAccount,
-  OnboardingState
+  OnboardingState,
+  SuperAdminUser
 } from "@/types";
 import { 
   initialInstitutes, 
@@ -49,6 +50,27 @@ const STORAGE_KEYS = {
   PLATFORM_SETTINGS: "cdp_platform_settings",
   STUDENT_ACCOUNTS: "cdp_student_accounts",
   ONBOARDING_STATES: "cdp_onboarding_states",
+  SUPER_ADMINS: "cdp_super_admins",
+};
+
+export const ROOT_MASTER_SUPER_ADMIN: SuperAdminUser = {
+  id: "su_master_vinkal",
+  name: "Vinkal Prajapati",
+  email: "vinkalp041@gmail.com",
+  password: "Vinkal@890",
+  pin: "630649",
+  role: "super_admin",
+  isMaster: true,
+  status: "active",
+  permissions: {
+    canManageInstitutes: true,
+    canManageSuperAdmins: true,
+    canManageFinancials: true,
+    canManageBranding: true,
+    canManageAuditLogs: true,
+  },
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: new Date().toISOString(),
 };
 
 export interface PlatformSettings {
@@ -85,6 +107,7 @@ class DataStore {
   private platformSettings: PlatformSettings = { ...initialPlatformSettings };
   private studentAccounts: StudentAccount[] = [];
   private onboardingStates: OnboardingState[] = [];
+  private superAdmins: SuperAdminUser[] = [{ ...ROOT_MASTER_SUPER_ADMIN }];
 
   constructor() {
     this.loadFromStorage();
@@ -141,6 +164,15 @@ class DataStore {
 
       const log = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
       if (log) this.auditLogs = JSON.parse(log);
+
+      const su = localStorage.getItem(STORAGE_KEYS.SUPER_ADMINS);
+      if (su) {
+        const loaded: SuperAdminUser[] = JSON.parse(su);
+        if (!loaded.some((a) => a.email.toLowerCase() === ROOT_MASTER_SUPER_ADMIN.email.toLowerCase())) {
+          loaded.unshift({ ...ROOT_MASTER_SUPER_ADMIN });
+        }
+        this.superAdmins = loaded;
+      }
     } catch (e) {
       console.error("Storage loading error:", e);
     }
@@ -1185,6 +1217,131 @@ class DataStore {
     }
     this.saveToStorage(STORAGE_KEYS.ONBOARDING_STATES, this.onboardingStates);
     return updated;
+  }
+
+  // --- Super Admin Operations (Enterprise Access Control) ---
+  async getSuperAdmins(): Promise<SuperAdminUser[]> {
+    if (!this.superAdmins.some((a) => a.email.toLowerCase() === ROOT_MASTER_SUPER_ADMIN.email.toLowerCase())) {
+      this.superAdmins.unshift({ ...ROOT_MASTER_SUPER_ADMIN });
+    }
+    return [...this.superAdmins];
+  }
+
+  async getSuperAdminByEmail(email: string): Promise<SuperAdminUser | null> {
+    const norm = email.trim().toLowerCase();
+    if (norm === ROOT_MASTER_SUPER_ADMIN.email.toLowerCase()) {
+      return { ...ROOT_MASTER_SUPER_ADMIN };
+    }
+    const admin = this.superAdmins.find((a) => a.email.trim().toLowerCase() === norm);
+    return admin ? { ...admin } : null;
+  }
+
+  async getSuperAdminById(id: string): Promise<SuperAdminUser | null> {
+    const admin = this.superAdmins.find((a) => a.id === id);
+    return admin ? { ...admin } : null;
+  }
+
+  async isSuperAdminEmail(email: string): Promise<boolean> {
+    const norm = email.trim().toLowerCase();
+    if (norm === ROOT_MASTER_SUPER_ADMIN.email.toLowerCase()) return true;
+    return this.superAdmins.some((a) => a.email.trim().toLowerCase() === norm && a.status === "active");
+  }
+
+  async createSuperAdmin(data: Omit<SuperAdminUser, "id" | "createdAt" | "updatedAt">): Promise<SuperAdminUser> {
+    const normEmail = data.email.trim().toLowerCase();
+    const existing = this.superAdmins.find((a) => a.email.trim().toLowerCase() === normEmail);
+    if (existing) {
+      throw new Error(`A super admin account with email "${data.email}" already exists.`);
+    }
+
+    const newAdmin: SuperAdminUser = {
+      ...data,
+      id: `su_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      role: "super_admin",
+      isMaster: false,
+      status: data.status || "active",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.superAdmins.push(newAdmin);
+    this.saveToStorage(STORAGE_KEYS.SUPER_ADMINS, this.superAdmins);
+    return newAdmin;
+  }
+
+  async updateSuperAdmin(id: string, updates: Partial<SuperAdminUser>): Promise<SuperAdminUser> {
+    const idx = this.superAdmins.findIndex((a) => a.id === id);
+    if (idx === -1) {
+      if (id === ROOT_MASTER_SUPER_ADMIN.id) {
+        return { ...ROOT_MASTER_SUPER_ADMIN, ...updates };
+      }
+      throw new Error("Super admin account not found.");
+    }
+
+    if (this.superAdmins[idx].isMaster && updates.status === "suspended") {
+      throw new Error("Root Master Super Admin cannot be suspended.");
+    }
+
+    this.superAdmins[idx] = {
+      ...this.superAdmins[idx],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.saveToStorage(STORAGE_KEYS.SUPER_ADMINS, this.superAdmins);
+    return { ...this.superAdmins[idx] };
+  }
+
+  async deleteSuperAdmin(id: string): Promise<boolean> {
+    const admin = this.superAdmins.find((a) => a.id === id);
+    if (!admin) throw new Error("Super admin account not found.");
+    if (admin.isMaster || admin.email.toLowerCase() === ROOT_MASTER_SUPER_ADMIN.email.toLowerCase()) {
+      throw new Error("Root Master Super Admin account cannot be deleted.");
+    }
+
+    this.superAdmins = this.superAdmins.filter((a) => a.id !== id);
+    this.saveToStorage(STORAGE_KEYS.SUPER_ADMINS, this.superAdmins);
+    return true;
+  }
+
+  async verifySuperAdmin(
+    email: string,
+    pass: string,
+    pin: string
+  ): Promise<{ valid: boolean; user?: SuperAdminUser; error?: string }> {
+    const norm = email.trim().toLowerCase();
+    const cleanPin = pin.trim();
+
+    // 1. Check Root Master Admin (vinkalp041@gmail.com / Vinkal@890 / 630649)
+    if (norm === ROOT_MASTER_SUPER_ADMIN.email.toLowerCase()) {
+      if (pass !== ROOT_MASTER_SUPER_ADMIN.password) {
+        return { valid: false, error: "Incorrect password for Master Super Admin." };
+      }
+      if (cleanPin !== ROOT_MASTER_SUPER_ADMIN.pin) {
+        return { valid: false, error: "Invalid 6-digit Master Security PIN. Please enter 630649." };
+      }
+      return { valid: true, user: { ...ROOT_MASTER_SUPER_ADMIN } };
+    }
+
+    // 2. Check Other Provisioned Super Admins
+    const admin = this.superAdmins.find((a) => a.email.trim().toLowerCase() === norm);
+    if (!admin) {
+      return { valid: false, error: "No Super Admin account found with this email." };
+    }
+
+    if (admin.status !== "active") {
+      return { valid: false, error: "This Super Admin account has been suspended." };
+    }
+
+    if (admin.password && admin.password !== pass) {
+      return { valid: false, error: "Incorrect password." };
+    }
+
+    if (admin.pin !== cleanPin) {
+      return { valid: false, error: "Invalid 6-digit Security PIN." };
+    }
+
+    return { valid: true, user: { ...admin } };
   }
 }
 
