@@ -32,7 +32,8 @@ import {
   Copy,
   Check,
   FileCheck,
-  Palette
+  Palette,
+  Clock
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { dataStore, PlatformSettings } from "@/lib/db";
@@ -589,10 +590,35 @@ export default function SuperAdminMasterControlPage() {
               <tbody className="divide-y divide-slate-100">
                 {filteredInstitutes.map((inst) => (
                   <tr key={inst.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-3.5 font-mono font-bold text-[#6529E8]">{inst.id}</td>
+                    <td className="p-3.5 font-mono font-bold text-[#6529E8]">
+                      <div>{inst.id}</div>
+                      {inst.registeredAt && (
+                        <div className="text-[10px] text-slate-400 font-sans font-normal mt-0.5">
+                          {new Date(inst.registeredAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-3.5">
                       <p className="font-bold text-slate-900 text-sm">{inst.name}</p>
                       <p className="text-[11px] text-slate-500">{inst.district}, {inst.state}</p>
+                      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                        {inst.onboarding_completed ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200">
+                            <CheckCircle2 className="w-2.5 h-2.5" />
+                            Setup Done
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-semibold border border-amber-200">
+                            <Clock className="w-2.5 h-2.5" />
+                            Setup Incomplete
+                          </span>
+                        )}
+                        {inst.institute_type && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium border border-slate-200">
+                            {inst.institute_type}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3.5">
                       <p className="font-semibold text-slate-800">{inst.ownerName}</p>

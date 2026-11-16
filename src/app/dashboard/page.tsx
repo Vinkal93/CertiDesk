@@ -52,6 +52,7 @@ export default function DashboardPage() {
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [selectedStudentForEdit, setSelectedStudentForEdit] = useState<Student | null>(null);
   const [dashboardAlert, setDashboardAlert] = useState<{ title: string; message: string; type: "info" | "error" | "success" } | null>(null);
+  const [onboarding, setOnboarding] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Dynamic fee rules set by Super Admin
@@ -75,6 +76,16 @@ export default function DashboardPage() {
       });
       setStudents(stList);
       setTransactions(txList.slice(0, 5));
+
+      // Fetch Onboarding Status
+      fetch("/api/onboarding")
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.onboarding) {
+            setOnboarding(d.onboarding);
+          }
+        })
+        .catch(console.warn);
     } catch (err) {
       console.error("Dashboard data fetch error:", err);
     } finally {
@@ -129,6 +140,73 @@ export default function DashboardPage() {
             <span>Return to Master Control</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
+        </div>
+      )}
+
+      {/* Onboarding Incomplete Reminder Banner */}
+      {onboarding && !onboarding.isCompleted && (
+        <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50/40 p-5 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Institute Setup Incomplete</span>
+                <span className="text-amber-500">•</span>
+                <span>Step {onboarding.step || 1} of 6</span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                Finish setting up your institute profile & academic defaults
+              </h3>
+              <p className="text-xs text-slate-600 max-w-2xl">
+                Complete your details, course list, and custom branding so your certificates, student portal, and marksheet templates are fully configured.
+              </p>
+              
+              <div className="flex flex-wrap items-center gap-3 pt-2 text-xs">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium border ${
+                  onboarding.personalInfoCompleted 
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                    : "bg-white text-slate-500 border-slate-200"
+                }`}>
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${onboarding.personalInfoCompleted ? "text-emerald-600" : "text-slate-300"}`} />
+                  Personal Info
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium border ${
+                  onboarding.instituteInfoCompleted 
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                    : "bg-white text-slate-500 border-slate-200"
+                }`}>
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${onboarding.instituteInfoCompleted ? "text-emerald-600" : "text-slate-300"}`} />
+                  Institute Details
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium border ${
+                  onboarding.academicConfigCompleted 
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                    : "bg-white text-slate-500 border-slate-200"
+                }`}>
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${onboarding.academicConfigCompleted ? "text-emerald-600" : "text-slate-300"}`} />
+                  Academic Config
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium border ${
+                  onboarding.brandingCompleted 
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                    : "bg-white text-slate-500 border-slate-200"
+                }`}>
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${onboarding.brandingCompleted ? "text-emerald-600" : "text-slate-300"}`} />
+                  Branding & Logo
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+              <Link
+                href={`/onboarding?step=${onboarding.step || 1}`}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all"
+              >
+                <span>Continue Setup</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
         </div>
       )}
 

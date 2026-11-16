@@ -25,7 +25,66 @@ export interface Institute {
   walletBalance: number;
   assignedCourses: string[];
   registeredAt: string;
+  onboarding_completed?: boolean;
+  institute_type?: string;
   settings: InstituteSettings;
+}
+
+export interface StudentAccount {
+  uid: string;
+  studentId: string;
+  instituteId: string;
+  loginId: string;
+  fullName: string;
+  enrollmentNo: string;
+  accountStatus: 'active' | 'inactive';
+  passwordStatus: 'set' | 'pending';
+  mustChangePassword?: boolean;
+  temporaryPassword?: string;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OnboardingState {
+  instituteId: string;
+  step: number;
+  isCompleted: boolean;
+  isSkipped?: boolean;
+  personalInfoCompleted?: boolean;
+  instituteInfoCompleted?: boolean;
+  academicConfigCompleted?: boolean;
+  brandingCompleted?: boolean;
+  personalInfo?: {
+    ownerName?: string;
+    directorName?: string;
+    profilePhotoUrl?: string;
+    contactNumber?: string;
+    email?: string;
+    designation?: string;
+  };
+  instituteInfo?: {
+    logoUrl?: string;
+    name?: string;
+    address?: string;
+    website?: string;
+    officialEmail?: string;
+    establishedYear?: string;
+    instituteType?: string;
+  };
+  academicConfig?: {
+    academicSession?: string;
+    studentIdPrefix?: string;
+    courseCategories?: string[];
+    defaultBatchTiming?: string;
+  };
+  branding?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    certificateSignatureUrl?: string;
+    instituteStampUrl?: string;
+  };
+  updatedAt: string;
 }
 
 export interface UserProfile {

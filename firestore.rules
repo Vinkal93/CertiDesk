@@ -25,6 +25,16 @@ service cloud.firestore {
       allow read: if isTenantAdmin(instituteId);
       allow update: if isTenantAdmin(instituteId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['walletBalance', 'status']);
       allow create, delete: if isSuperAdmin();
+
+      // Institute settings subcollection
+      match /settings/{settingId} {
+        allow read, write: if isTenantAdmin(instituteId);
+      }
+
+      // Institute student login accounts subcollection
+      match /student_accounts/{accountUid} {
+        allow read, write: if isTenantAdmin(instituteId);
+      }
     }
 
     // Students collection - strict tenant boundary
@@ -64,6 +74,12 @@ service cloud.firestore {
     // Audit logs
     match /auditLogs/{logId} {
       allow read: if isTenantAdmin(resource.data.instituteId);
+      allow write: if false; // Server-only
+    }
+
+    // Platform audit logs (Super Admin & Server-only)
+    match /platform_audit_logs/{logId} {
+      allow read: if isSuperAdmin();
       allow write: if false; // Server-only
     }
   }

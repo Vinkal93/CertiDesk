@@ -12,7 +12,9 @@ import {
   AuditLog, 
   AttendanceRecord,
   AccountStatus,
-  TransactionPurpose
+  TransactionPurpose,
+  StudentAccount,
+  OnboardingState
 } from "@/types";
 import { 
   initialInstitutes, 
@@ -45,6 +47,8 @@ const STORAGE_KEYS = {
   ATTENDANCE: "cdp_attendance",
   AUDIT_LOGS: "cdp_audit_logs",
   PLATFORM_SETTINGS: "cdp_platform_settings",
+  STUDENT_ACCOUNTS: "cdp_student_accounts",
+  ONBOARDING_STATES: "cdp_onboarding_states",
 };
 
 export interface PlatformSettings {
@@ -79,6 +83,8 @@ class DataStore {
   private attendance: AttendanceRecord[] = [];
   private auditLogs: AuditLog[] = [...initialAuditLogs];
   private platformSettings: PlatformSettings = { ...initialPlatformSettings };
+  private studentAccounts: StudentAccount[] = [];
+  private onboardingStates: OnboardingState[] = [];
 
   constructor() {
     this.loadFromStorage();
@@ -110,6 +116,12 @@ class DataStore {
 
       const ps = localStorage.getItem(STORAGE_KEYS.PLATFORM_SETTINGS);
       if (ps) this.platformSettings = JSON.parse(ps);
+
+      const sa = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
+      if (sa) this.studentAccounts = JSON.parse(sa);
+
+      const os = localStorage.getItem(STORAGE_KEYS.ONBOARDING_STATES);
+      if (os) this.onboardingStates = JSON.parse(os);
 
       const tpl = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
       if (tpl) {
@@ -153,16 +165,34 @@ class DataStore {
     return [...this.institutes];
   }
 
-  async createInstitute(data: Omit<Institute, "id" | "registeredAt">): Promise<Institute> {
-    const nextNum = 1000 + this.institutes.length + 1;
-    const prefix = (data.name.match(/[A-Z]/g)?.slice(0, 4).join("") || "INST").toUpperCase();
-    const id = `${prefix}${nextNum}`;
+  generateUniqueInstituteId(prefix = "SBCI", year = new Date().getFullYear()): string {
+    const cleanPrefix = (prefix || "SBCI").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "SBCI";
+    const pattern = new RegExp(`^${cleanPrefix}-${year}-(\\d+)$`, "i");
+    let maxSeq = 0;
+
+    for (const inst of this.institutes) {
+      const match = inst.id.match(pattern);
+      if (match) {
+        const seq = parseInt(match[1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+
+    const nextSeq = maxSeq + 1;
+    return `${cleanPrefix}-${year}-${String(nextSeq).padStart(5, "0")}`;
+  }
+
+  async createInstitute(data: Omit<Institute, "id" | "registeredAt"> & { id?: string }): Promise<Institute> {
+    const id = data.id || this.generateUniqueInstituteId(data.code || "SBCI");
 
     const newInst: Institute = {
       ...data,
       id,
       registeredAt: new Date().toISOString(),
       walletBalance: data.walletBalance || 0,
+      onboarding_completed: data.onboarding_completed ?? false,
       settings: data.settings || {
         admissionFee: 150,
         profileEditFee: 100,
@@ -1101,6 +1131,60 @@ class DataStore {
       walletBalance: inst ? inst.walletBalance : 0,
       totalTransactions: txs.length,
     };
+  }
+
+  // --- Student Accounts & Login Access Management ---
+  async getStudentAccounts(instituteId: string): Promise<StudentAccount[]> {
+    return this.studentAccounts.filter((sa) => sa.instituteId === instituteId);
+  }
+
+  async getStudentAccount(uidOrStudentId: string): Promise<StudentAccount | null> {
+    const acc = this.studentAccounts.find((sa) => sa.uid === uidOrStudentId || sa.studentId === uidOrStudentId);
+    return acc ? { ...acc } : null;
+  }
+
+  async createStudentAccount(data: StudentAccount): Promise<StudentAccount> {
+    const existing = this.studentAccounts.find((sa) => sa.uid === data.uid || sa.studentId === data.studentId);
+    if (existing) {
+      throw new Error("A login account already exists for this student.");
+    }
+    const acc = { ...data };
+    this.studentAccounts.unshift(acc);
+    this.saveToStorage(STORAGE_KEYS.STUDENT_ACCOUNTS, this.studentAccounts);
+    return acc;
+  }
+
+  async updateStudentAccount(uid: string, updates: Partial<StudentAccount>): Promise<StudentAccount> {
+    const idx = this.studentAccounts.findIndex((sa) => sa.uid === uid);
+    if (idx === -1) throw new Error("Student account not found");
+    this.studentAccounts[idx] = {
+      ...this.studentAccounts[idx],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    this.saveToStorage(STORAGE_KEYS.STUDENT_ACCOUNTS, this.studentAccounts);
+    return { ...this.studentAccounts[idx] };
+  }
+
+  // --- Institute Onboarding State ---
+  async getOnboardingState(instituteId: string): Promise<OnboardingState | null> {
+    const state = this.onboardingStates.find((os) => os.instituteId === instituteId);
+    return state ? { ...state } : null;
+  }
+
+  async saveOnboardingState(state: OnboardingState): Promise<OnboardingState> {
+    const idx = this.onboardingStates.findIndex((os) => os.instituteId === state.instituteId);
+    const updated: OnboardingState = {
+      ...state,
+      updatedAt: new Date().toISOString(),
+    };
+    if (idx !== -1) {
+      this.onboardingStates[idx] = updated;
+    } else {
+      this.onboardingStates.unshift(updated);
+    }
+    this.saveToStorage(STORAGE_KEYS.ONBOARDING_STATES, this.onboardingStates);
+    return updated;
   }
 }
 

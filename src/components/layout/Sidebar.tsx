@@ -29,7 +29,8 @@ import {
   DollarSign,
   ArrowUpRight,
   Radio,
-  ExternalLink
+  ExternalLink,
+  Key
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -72,6 +73,13 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
         },
         { name: "Import / Bulk Add", href: "/students/import", icon: FileSpreadsheet },
         { name: "Archived Students", href: "/students/archived", icon: Archive },
+        { 
+          name: "Manage Student Login", 
+          href: "/students/login-management", 
+          icon: Key,
+          badge: "Firebase",
+          badgeColor: "bg-blue-50 text-blue-700 border border-blue-200"
+        },
       ],
     },
     {
