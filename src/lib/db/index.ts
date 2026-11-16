@@ -44,6 +44,25 @@ const STORAGE_KEYS = {
   TEMPLATE_VERSIONS: "cdp_template_versions",
   ATTENDANCE: "cdp_attendance",
   AUDIT_LOGS: "cdp_audit_logs",
+  PLATFORM_SETTINGS: "cdp_platform_settings",
+};
+
+export interface PlatformSettings {
+  siteTitle: string;
+  siteSubtitle: string;
+  logoUrl: string;
+  primaryColor: string;
+  buttonRadius: string;
+  themePreset: string;
+}
+
+export const initialPlatformSettings: PlatformSettings = {
+  siteTitle: "CertiDesk Pro",
+  siteSubtitle: "Institute & Certificate Management SaaS",
+  logoUrl: "",
+  primaryColor: "#0F172A",
+  buttonRadius: "12px",
+  themePreset: "slate",
 };
 
 // In-Memory store fallback
@@ -59,6 +78,7 @@ class DataStore {
   private templateVersions: CertificateTemplateVersion[] = [];
   private attendance: AttendanceRecord[] = [];
   private auditLogs: AuditLog[] = [...initialAuditLogs];
+  private platformSettings: PlatformSettings = { ...initialPlatformSettings };
 
   constructor() {
     this.loadFromStorage();
@@ -87,6 +107,9 @@ class DataStore {
 
       const ms = localStorage.getItem(STORAGE_KEYS.MARKSHEETS);
       if (ms) this.marksheets = JSON.parse(ms);
+
+      const ps = localStorage.getItem(STORAGE_KEYS.PLATFORM_SETTINGS);
+      if (ps) this.platformSettings = JSON.parse(ps);
 
       const tpl = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
       if (tpl) {
@@ -197,7 +220,8 @@ class DataStore {
   async rechargeWallet(
     instituteId: string, 
     amount: number, 
-    razorpayPaymentId = `pay_${Date.now()}`
+    razorpayPaymentId = `pay_${Date.now()}`,
+    customDescription?: string
   ): Promise<WalletTransaction> {
     const inst = this.institutes.find((i) => i.id === instituteId);
     if (!inst) throw new Error("Institute not found");
@@ -209,7 +233,7 @@ class DataStore {
       amount,
       type: "credit",
       purpose: "recharge",
-      description: `Wallet recharged: ₹${amount.toLocaleString()} (Payment via Razorpay)`,
+      description: customDescription || `Wallet recharged: ₹${amount.toLocaleString()} (Payment via Razorpay)`,
       balanceAfter: inst.walletBalance,
       razorpayPaymentId,
       status: "success",
@@ -231,10 +255,64 @@ class DataStore {
       action: "WALLET_RECHARGE",
       targetType: "wallet",
       targetId: tx.id,
-      details: `Recharged ₹${amount}. New balance: ₹${inst.walletBalance}`,
+      details: customDescription || `Recharged ₹${amount}. New balance: ₹${inst.walletBalance}`,
     });
 
     return tx;
+  }
+
+  async setExactWalletBalance(instituteId: string, exactBalance: number, note?: string): Promise<WalletTransaction> {
+    const inst = this.institutes.find((i) => i.id === instituteId);
+    if (!inst) throw new Error("Institute not found");
+
+    const oldBalance = inst.walletBalance;
+    const diff = exactBalance - oldBalance;
+    inst.walletBalance = exactBalance;
+
+    const tx: WalletTransaction = {
+      id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      instituteId,
+      amount: Math.abs(diff),
+      type: diff >= 0 ? "credit" : "debit",
+      purpose: "promo_credit",
+      description: `Super Admin Overwrite: Set balance from ₹${oldBalance.toLocaleString()} to ₹${exactBalance.toLocaleString()}${note ? ` (${note})` : ""}`,
+      balanceAfter: inst.walletBalance,
+      status: "success",
+      createdAt: new Date().toISOString(),
+    };
+
+    this.transactions.unshift(tx);
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    this.saveToStorage(STORAGE_KEYS.TRANSACTIONS, this.transactions);
+
+    // Sync to Firestore
+    saveInstituteFirestore(inst).catch(console.warn);
+    saveTransactionFirestore(tx).catch(console.warn);
+
+    this.logAudit({
+      instituteId,
+      userId: "Super Admin",
+      userEmail: "admin@certidesk.pro",
+      action: "WALLET_RECHARGE",
+      targetType: "wallet",
+      targetId: tx.id,
+      details: `Super Admin manually overwrote wallet balance to ₹${exactBalance}. Difference: ${diff >= 0 ? "+" : "-"}${Math.abs(diff)}`,
+    });
+
+    return tx;
+  }
+
+  async getPlatformSettings(): Promise<PlatformSettings> {
+    return { ...this.platformSettings };
+  }
+
+  async updatePlatformSettings(updates: Partial<PlatformSettings>): Promise<PlatformSettings> {
+    this.platformSettings = {
+      ...this.platformSettings,
+      ...updates,
+    };
+    this.saveToStorage(STORAGE_KEYS.PLATFORM_SETTINGS, this.platformSettings);
+    return { ...this.platformSettings };
   }
 
   async creditPromoBalance(instituteId: string, amount: number, note: string): Promise<WalletTransaction> {

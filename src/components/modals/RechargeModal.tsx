@@ -21,8 +21,10 @@ export default function RechargeModal({ isOpen, onClose, onSuccess }: RechargeMo
 
   if (!isOpen) return null;
 
-  const quickAmounts = [500, 1000, 2000, 5000];
+  const quickAmounts = [1000, 2000, 3000];
   const finalAmount = customAmount ? parseFloat(customAmount) || 0 : selectedAmount;
+  const promoBonus = finalAmount === 3000 ? 200 : 0;
+  const totalCredited = finalAmount + promoBonus;
 
   const handleRecharge = async () => {
     if (finalAmount < 100) {
@@ -53,14 +55,18 @@ export default function RechargeModal({ isOpen, onClose, onSuccess }: RechargeMo
       const orderData = await orderRes.json();
       const paymentId = `pay_rzp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
-      // 2. Atomic wallet recharge in dataStore & Firestore sync
-      const tx = await dataStore.rechargeWallet(institute.id, finalAmount, paymentId);
+      // 2. Atomic wallet recharge in dataStore & Firestore sync (with bonus if applicable)
+      const desc = promoBonus > 0 
+        ? `₹${finalAmount.toLocaleString()} Razorpay Recharge + ₹${promoBonus} Extra Promotional Bonus` 
+        : `₹${finalAmount.toLocaleString()} Razorpay Recharge`;
+      
+      const tx = await dataStore.rechargeWallet(institute.id, totalCredited, paymentId, desc);
       
       // 3. Refresh AuthContext state immediately
       await refreshInstitute();
 
       setSuccessData({
-        amount: finalAmount,
+        amount: totalCredited,
         paymentId,
         newBalance: tx.balanceAfter,
       });
@@ -157,12 +163,19 @@ export default function RechargeModal({ isOpen, onClose, onSuccess }: RechargeMo
 
               {/* Quick Select Options */}
               <div>
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
-                  Select Recharge Pack
-                </label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Select Recharge Pack
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    Official Instant Top-Up
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2.5">
                   {quickAmounts.map((amt) => {
                     const isSelected = !customAmount && selectedAmount === amt;
+                    const hasSpecialBonus = amt === 3000;
                     return (
                       <button
                         key={amt}
@@ -171,18 +184,45 @@ export default function RechargeModal({ isOpen, onClose, onSuccess }: RechargeMo
                           setSelectedAmount(amt);
                           setCustomAmount("");
                         }}
-                        className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all border ${
+                        className={`relative py-3 px-2 rounded-xl text-center transition-all border flex flex-col items-center justify-center cursor-pointer ${
                           isSelected
-                            ? "bg-slate-900 border-slate-900 text-white shadow-xs"
+                            ? "bg-slate-900 border-slate-900 text-white shadow-md scale-[1.02]"
                             : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                         }`}
                       >
-                        ₹{amt.toLocaleString()}
+                        {hasSpecialBonus && (
+                          <span className="absolute -top-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shadow-xs">
+                            +₹200 BONUS
+                          </span>
+                        )}
+                        <span className="text-sm font-black">₹{amt.toLocaleString()}</span>
+                        {hasSpecialBonus ? (
+                          <span className={`text-[10px] font-semibold mt-0.5 ${isSelected ? "text-amber-300" : "text-emerald-600"}`}>
+                            Get ₹3,200
+                          </span>
+                        ) : (
+                          <span className="text-[10px] opacity-70 mt-0.5">Standard Pack</span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
               </div>
+
+              {/* Bonus Notification Bar */}
+              {promoBonus > 0 && (
+                <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🎁</span>
+                    <span className="font-bold text-amber-900">
+                      ₹3,000 Special Offer Applied!
+                    </span>
+                  </div>
+                  <span className="font-extrabold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-md">
+                    +₹200 FREE Credit
+                  </span>
+                </div>
+              )}
 
               {/* Custom Amount Field */}
               <div>
@@ -229,7 +269,10 @@ export default function RechargeModal({ isOpen, onClose, onSuccess }: RechargeMo
                   </>
                 ) : (
                   <>
-                    <span>Pay ₹{finalAmount.toLocaleString("en-IN")} via Razorpay</span>
+                    <span>
+                      Pay ₹{finalAmount.toLocaleString("en-IN")}
+                      {promoBonus > 0 ? ` (Get ₹${totalCredited.toLocaleString("en-IN")})` : ""}
+                    </span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

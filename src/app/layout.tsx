@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import AuthGuard from "@/components/auth/AuthGuard";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { usePathname } from "next/navigation";
+import { dataStore } from "@/lib/db";
 
 export default function RootLayout({
   children,
@@ -15,6 +16,20 @@ export default function RootLayout({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    // Apply dynamic platform settings (Primary color & Border radius configured by Super Admin)
+    dataStore.getPlatformSettings().then((settings) => {
+      if (settings && typeof document !== "undefined") {
+        if (settings.primaryColor) {
+          document.documentElement.style.setProperty("--theme-primary", settings.primaryColor);
+        }
+        if (settings.buttonRadius) {
+          document.documentElement.style.setProperty("--theme-radius", settings.buttonRadius);
+        }
+      }
+    }).catch(console.warn);
+  }, []);
 
   // Check if public page (landing page, verification routes, or login)
   const isPublicPage =

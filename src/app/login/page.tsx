@@ -12,15 +12,15 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   
-  const [loginType, setLoginType] = useState<"institute" | "student">("institute");
+  const [loginType, setLoginType] = useState<"institute" | "student">("student");
   
-  // Institute form state
-  const [identifier, setIdentifier] = useState("SBCI1001");
-  const [password, setPassword] = useState("Institute@123456");
+  // Institute form state (empty - no prefilled dummy credentials)
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   
-  // Student form state
-  const [studentEnrollment, setStudentEnrollment] = useState("SBCI/ADCA/0268");
-  const [studentDobOrPass, setStudentDobOrPass] = useState("2004-05-12");
+  // Student form state (empty - no prefilled dummy credentials)
+  const [studentEnrollment, setStudentEnrollment] = useState("");
+  const [studentDobOrPass, setStudentDobOrPass] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,8 +86,8 @@ export default function LoginPage() {
       }
 
       // Validate password
-      const expectedPassword = matched.password || "Institute@123456";
-      let passwordValid = password === expectedPassword;
+      const expectedPassword = matched.password;
+      let passwordValid = Boolean(expectedPassword && password === expectedPassword);
 
       if (!passwordValid && matched.email) {
         // Also verify against Firebase Auth if configured
@@ -264,19 +264,19 @@ export default function LoginPage() {
                     type="text"
                     value={studentEnrollment}
                     onChange={(e) => setStudentEnrollment(e.target.value)}
-                    placeholder="e.g. SBCI/ADCA/0268"
-                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl font-medium font-mono focus:ring-2 focus:ring-purple-600 focus:border-transparent focus:outline-hidden transition-all text-slate-800"
+                    placeholder="Enter student enrollment number or registered email"
+                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-purple-600 focus:border-transparent focus:outline-hidden transition-all text-slate-800"
                     required
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Example: <strong>SBCI/ADCA/0268</strong> (Khushbu)
+                  Enter your unique student enrollment number assigned by your center.
                 </p>
               </div>
 
               <div>
                 <label className="font-semibold text-slate-700 block mb-1">
-                  Date of Birth or Password
+                  Date of Birth / Access Key
                 </label>
                 <div className="relative">
                   <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -284,12 +284,12 @@ export default function LoginPage() {
                     type="text"
                     value={studentDobOrPass}
                     onChange={(e) => setStudentDobOrPass(e.target.value)}
-                    placeholder="YYYY-MM-DD or Password"
-                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl font-medium font-mono focus:ring-2 focus:ring-purple-600 focus:border-transparent focus:outline-hidden transition-all text-slate-800"
+                    placeholder="YYYY-MM-DD or student password"
+                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-purple-600 focus:border-transparent focus:outline-hidden transition-all text-slate-800"
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Your registered date of birth (e.g. 2004-05-12).
+                  Your registered date of birth (e.g. 2004-05-12) or access password.
                 </p>
               </div>
             </>

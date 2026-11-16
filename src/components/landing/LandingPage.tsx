@@ -39,6 +39,39 @@ export default function LandingPage() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [selectedCertTemplate, setSelectedCertTemplate] = useState<string>("adca");
 
+  // Contact Form State
+  const [contactForm, setContactForm] = useState({
+    instituteName: "",
+    contactPerson: "",
+    mobile: "",
+    email: "",
+    city: "",
+    state: "Uttar Pradesh",
+    estimatedStudents: "100-250 Students",
+    message: ""
+  });
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setContactSubmitting(true);
+    try {
+      if (typeof window !== "undefined") {
+        const existing = JSON.parse(localStorage.getItem("cdp_inquiries") || "[]");
+        existing.push({
+          ...contactForm,
+          id: `inq_${Date.now()}`,
+          submittedAt: new Date().toISOString()
+        });
+        localStorage.setItem("cdp_inquiries", JSON.stringify(existing));
+      }
+      setContactSubmitted(true);
+    } finally {
+      setContactSubmitting(false);
+    }
+  };
+
   const featureTabs = [
     {
       id: "student",
@@ -200,7 +233,7 @@ export default function LandingPage() {
           {/* Center Navigation Links */}
           <div className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-600">
             <a href="#features" className="hover:text-slate-950 transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-slate-950 transition-colors">Pricing</a>
+            <a href="#contact" className="hover:text-slate-950 transition-colors">Contact Us</a>
             <a href="#capabilities" className="hover:text-slate-950 transition-colors">Charges & Wallet</a>
             <a href="#how-it-works" className="hover:text-slate-950 transition-colors">How It Works</a>
             <a href="#why-us" className="hover:text-slate-950 transition-colors">Security</a>
@@ -801,58 +834,186 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 9. TRANSPARENT WALLET PRICING */}
-      <section id="pricing" className="py-20 md:py-28 bg-[#F8FAFC]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* 9. DIRECT CONTACT US & ONBOARDING INQUIRY FORM */}
+      <section id="contact" className="py-20 md:py-24 bg-[#F8FAFC]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">
-              Clear & Transparent Pricing
+          <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 border border-blue-200/60 text-blue-700">
+              Direct Contact & Support
             </div>
             <h2 className="text-3xl md:text-4xl font-black text-slate-950 tracking-tight">
-              Pay As You Enroll. Zero Monthly Rents.
+              Get in Touch with Our Platform Team
             </h2>
             <p className="text-slate-600 text-sm md:text-base">
-              No mandatory subscriptions, setup costs, or renewal fees.
+              Have questions regarding institute registration, custom certificate layouts, or platform setup? Send us an inquiry below.
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-7 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Student Admission</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-slate-950 font-mono">₹ 150</span>
-                <span className="text-xs text-slate-500">/ student</span>
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 max-w-3xl mx-auto">
+            {contactSubmitted ? (
+              <div className="text-center py-8 space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                  <CheckCircle2 className="w-10 h-10" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                    Inquiry Received Successfully!
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
+                    Thank you, <strong>{contactForm.contactPerson || "Center Director"}</strong>. Our dedicated institute onboarding specialist will call/WhatsApp you on <strong>{contactForm.mobile}</strong> within 2 hours.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContactSubmitted(false);
+                    setContactForm({
+                      instituteName: "",
+                      contactPerson: "",
+                      mobile: "",
+                      email: "",
+                      city: "",
+                      state: "Uttar Pradesh",
+                      estimatedStudents: "100-250 Students",
+                      message: ""
+                    });
+                  }}
+                  className="px-6 py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  Send Another Message
+                </button>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Deducted once upon admission. Includes lifetime profile storage and unlimited certificate generations.
-              </p>
-            </div>
+            ) : (
+              <form onSubmit={handleContactSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Institute / Training Center Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={contactForm.instituteName}
+                      onChange={(e) => setContactForm({ ...contactForm, instituteName: e.target.value })}
+                      placeholder="e.g. Apex Computer Academy"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                    />
+                  </div>
 
-            <div className="bg-white p-7 rounded-3xl border-2 border-slate-900 shadow-sm space-y-4 relative">
-              <span className="absolute -top-3 left-1/2 transform -translate-x-1/2 px-3 py-0.5 bg-[#0F172A] text-white text-[10px] font-bold rounded-full">
-                UNLIMITED USAGE
-              </span>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Certificate Issuance</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-slate-950 font-mono">₹ 0</span>
-                <span className="text-xs text-slate-500">/ free</span>
-              </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Generate, download and verify unlimited PDF certificates and marksheets for every enrolled student.
-              </p>
-            </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Director / Contact Person Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={contactForm.contactPerson}
+                      onChange={(e) => setContactForm({ ...contactForm, contactPerson: e.target.value })}
+                      placeholder="e.g. Rajesh Kumar"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                    />
+                  </div>
+                </div>
 
-            <div className="bg-white p-7 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Student Profile Edit</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-slate-950 font-mono">₹ 100</span>
-                <span className="text-xs text-slate-500">/ update</span>
-              </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Applies only when editing student personal details post-admission to ensure academic record audit integrity.
-              </p>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Mobile Number / WhatsApp *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={contactForm.mobile}
+                      onChange={(e) => setContactForm({ ...contactForm, mobile: e.target.value })}
+                      placeholder="e.g. 9876543210"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Official Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={contactForm.email}
+                      onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                      placeholder="e.g. apex.director@gmail.com"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      City / District *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={contactForm.city}
+                      onChange={(e) => setContactForm({ ...contactForm, city: e.target.value })}
+                      placeholder="e.g. Gorakhpur"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      State *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={contactForm.state}
+                      onChange={(e) => setContactForm({ ...contactForm, state: e.target.value })}
+                      placeholder="e.g. Uttar Pradesh"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Estimated Students
+                    </label>
+                    <select
+                      value={contactForm.estimatedStudents}
+                      onChange={(e) => setContactForm({ ...contactForm, estimatedStudents: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 bg-white focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                    >
+                      <option>50 - 100 Students</option>
+                      <option>100 - 250 Students</option>
+                      <option>250 - 500 Students</option>
+                      <option>500+ Students</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Your Requirements / Message (Optional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={contactForm.message}
+                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                    placeholder="Tell us about your courses, certificate design preferences, or onboarding queries..."
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900 resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={contactSubmitting}
+                  className="w-full py-3 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {contactSubmitting ? "Submitting Inquiry..." : "Submit Inquiry to Platform Team →"}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </section>

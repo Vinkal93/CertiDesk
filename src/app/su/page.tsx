@@ -31,10 +31,11 @@ import {
   Key,
   Copy,
   Check,
-  FileCheck
+  FileCheck,
+  Palette
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { dataStore } from "@/lib/db";
+import { dataStore, PlatformSettings } from "@/lib/db";
 import { Institute, WalletTransaction, Student, Course, AuditLog } from "@/types";
 import { 
   subscribeRealtimeAllInstitutes, 
@@ -54,17 +55,27 @@ export default function SuperAdminMasterControlPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Active Tab: institutes | students | courses | financials | audit
-  const [activeTab, setActiveTab] = useState<"institutes" | "students" | "courses" | "financials" | "audit">("institutes");
+  // Active Tab: institutes | students | courses | financials | audit | branding
+  const [activeTab, setActiveTab] = useState<"institutes" | "students" | "courses" | "financials" | "audit" | "branding">("institutes");
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
   const [instituteFilter, setInstituteFilter] = useState("all");
 
+  // Platform Branding & Theme settings
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
+    siteTitle: "CertiDesk Pro",
+    siteSubtitle: "Institute & Certificate Management SaaS",
+    logoUrl: "",
+    primaryColor: "#0F172A",
+    buttonRadius: "12px",
+    themePreset: "slate",
+  });
+
   // Modals
   const [showCreditModal, setShowCreditModal] = useState<Institute | null>(null);
   const [creditAmount, setCreditAmount] = useState<number>(1000);
-  const [creditType, setCreditType] = useState<"credit" | "debit">("credit");
+  const [creditType, setCreditType] = useState<"credit" | "debit" | "set_exact">("credit");
   const [creditNote, setCreditNote] = useState<string>("HQ Promotional Bonus");
 
   const [showFeeModal, setShowFeeModal] = useState<Institute | null>(null);
@@ -102,12 +113,14 @@ export default function SuperAdminMasterControlPage() {
       const tx = await dataStore.getAllTransactions();
       const crs = await dataStore.getCourses("SBCI1001");
       const logs = await dataStore.getAuditLogs();
+      const ps = await dataStore.getPlatformSettings();
 
       setInstitutes(inst);
       setAllStudents(st);
       setTransactions(tx);
       setCourses(crs);
       setAuditLogs(logs);
+      if (ps) setPlatformSettings(ps);
     } catch (e) {
       console.error("Super Admin load error:", e);
     } finally {
@@ -153,31 +166,57 @@ export default function SuperAdminMasterControlPage() {
     await loadData();
   };
 
-  // Adjust Wallet Balance / Credit Grant
+  // Adjust Wallet Balance / Credit Grant / Exact Overwrite
   const handleSaveWalletAdjustment = async () => {
     if (!showCreditModal) return;
     try {
       if (creditType === "credit") {
         await dataStore.creditPromoBalance(showCreditModal.id, creditAmount, creditNote);
-      } else {
+      } else if (creditType === "debit") {
         await dataStore.deductWallet(
           showCreditModal.id,
           creditAmount,
           "profile_update",
           `HQ Admin Debit: ₹${creditAmount} - ${creditNote}`
         );
+      } else {
+        await dataStore.setExactWalletBalance(showCreditModal.id, creditAmount, creditNote);
       }
       setShowCreditModal(null);
       await loadData();
       setFeedbackAlert({
         title: "Wallet Updated",
-        message: `Successfully adjusted wallet for ${showCreditModal.name}.`,
+        message: creditType === "set_exact" 
+          ? `Successfully overwritten wallet balance to ₹${creditAmount.toLocaleString()} for ${showCreditModal.name}.`
+          : `Successfully adjusted wallet for ${showCreditModal.name}.`,
         type: "success"
       });
     } catch (err: any) {
       setFeedbackAlert({
         title: "Adjustment Failed",
         message: err.message || "Failed to adjust wallet",
+        type: "error"
+      });
+    }
+  };
+
+  // Save Platform Theme, Colors & Branding
+  const handleSavePlatformSettings = async () => {
+    try {
+      const updated = await dataStore.updatePlatformSettings(platformSettings);
+      if (typeof document !== "undefined") {
+        document.documentElement.style.setProperty("--theme-primary", updated.primaryColor);
+        document.documentElement.style.setProperty("--theme-radius", updated.buttonRadius);
+      }
+      setFeedbackAlert({
+        title: "Platform Branding Saved",
+        message: "Platform title, colors, button styles and logo updated successfully across the system.",
+        type: "success"
+      });
+    } catch (err: any) {
+      setFeedbackAlert({
+        title: "Save Failed",
+        message: err.message || "Failed to save platform settings",
         type: "error"
       });
     }
@@ -495,6 +534,18 @@ export default function SuperAdminMasterControlPage() {
         >
           <ShieldAlert className="w-4 h-4" />
           <span>System Audit Logs ({auditLogs.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("branding")}
+          className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "branding"
+              ? "bg-slate-900 text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+        >
+          <Palette className="w-4 h-4 text-purple-400" />
+          <span>Branding & Theme Studio</span>
         </button>
       </div>
 
@@ -857,6 +908,254 @@ export default function SuperAdminMasterControlPage() {
         </div>
       )}
 
+      {/* TAB 6: PLATFORM BRANDING, COLORS & THEME */}
+      {activeTab === "branding" && (
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-card p-6 sm:p-8 space-y-6">
+          <div className="border-b pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200/60 mb-2">
+                Super Admin Design Engine
+              </div>
+              <h2 className="text-lg font-black text-slate-900">Platform Branding, Theme & Logo Studio</h2>
+              <p className="text-xs text-slate-500">
+                Customize the platform brand name, global primary button colors, border radius curvature, and website logo dynamically.
+              </p>
+            </div>
+            <button
+              onClick={handleSavePlatformSettings}
+              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Check className="w-4 h-4" />
+              <span>Save & Publish Changes</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Config Controls (Col 7) */}
+            <div className="lg:col-span-7 space-y-5">
+              {/* Brand Name & Tagline */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Website Platform Title
+                  </label>
+                  <input
+                    type="text"
+                    value={platformSettings.siteTitle}
+                    onChange={(e) => setPlatformSettings({ ...platformSettings, siteTitle: e.target.value })}
+                    placeholder="e.g. CertiDesk Pro"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Platform Tagline / Subtitle
+                  </label>
+                  <input
+                    type="text"
+                    value={platformSettings.siteSubtitle}
+                    onChange={(e) => setPlatformSettings({ ...platformSettings, siteSubtitle: e.target.value })}
+                    placeholder="e.g. Institute & Certificate SaaS"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+              </div>
+
+              {/* Logo URL */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Website Platform Logo URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={platformSettings.logoUrl}
+                    onChange={(e) => setPlatformSettings({ ...platformSettings, logoUrl: e.target.value })}
+                    placeholder="https://example.com/logo.png (or leave blank to use default icon)"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                  />
+                  {platformSettings.logoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setPlatformSettings({ ...platformSettings, logoUrl: "" })}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Upload your logo to any image hosting service (or Firebase Storage) and paste the URL here.
+                </p>
+              </div>
+
+              {/* Primary Color Palette Presets */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  Global Primary & Button Color
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {[
+                    { name: "Dark Slate", hex: "#0F172A" },
+                    { name: "Royal Indigo", hex: "#4F46E5" },
+                    { name: "Electric Blue", hex: "#2563EB" },
+                    { name: "Emerald Pro", hex: "#059669" },
+                    { name: "Violet Magic", hex: "#7C3AED" },
+                    { name: "Crimson Red", hex: "#DC2626" },
+                  ].map((color) => (
+                    <button
+                      key={color.hex}
+                      type="button"
+                      onClick={() => setPlatformSettings({ ...platformSettings, primaryColor: color.hex })}
+                      className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                        platformSettings.primaryColor.toLowerCase() === color.hex.toLowerCase()
+                          ? "border-slate-900 ring-2 ring-slate-900/20 shadow-xs"
+                          : "border-slate-200 hover:border-slate-300 bg-white"
+                      }`}
+                    >
+                      <span className="w-6 h-6 rounded-lg shadow-2xs" style={{ backgroundColor: color.hex }} />
+                      <span className="text-[10px] font-bold text-slate-700">{color.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-3 mt-3">
+                  <span className="text-xs font-semibold text-slate-500">Or Custom Hex:</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={platformSettings.primaryColor}
+                      onChange={(e) => setPlatformSettings({ ...platformSettings, primaryColor: e.target.value })}
+                      className="w-8 h-8 rounded-lg cursor-pointer border border-slate-200"
+                    />
+                    <input
+                      type="text"
+                      value={platformSettings.primaryColor}
+                      onChange={(e) => setPlatformSettings({ ...platformSettings, primaryColor: e.target.value })}
+                      className="w-28 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold uppercase"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Button Border Radius */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  Button & Card Border Radius Curvature
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {[
+                    { label: "Sharp", val: "6px" },
+                    { label: "Modern", val: "10px" },
+                    { label: "Smooth (Default)", val: "12px" },
+                    { label: "Curved", val: "16px" },
+                    { label: "Pill Shape", val: "9999px" },
+                  ].map((r) => (
+                    <button
+                      key={r.val}
+                      type="button"
+                      onClick={() => setPlatformSettings({ ...platformSettings, buttonRadius: r.val })}
+                      className={`py-2 px-2.5 border text-center transition-all cursor-pointer ${
+                        platformSettings.buttonRadius === r.val
+                          ? "border-slate-900 bg-slate-900 text-white font-bold shadow-xs"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-semibold text-xs"
+                      }`}
+                      style={{ borderRadius: r.val }}
+                    >
+                      <span className="text-xs block">{r.label}</span>
+                      <span className="text-[10px] opacity-75">{r.val}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Live Preview Box (Col 5) */}
+            <div className="lg:col-span-5 bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 space-y-4">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                Live Interactive Component Preview
+              </span>
+
+              {/* Mock Brand Header */}
+              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-3">
+                {platformSettings.logoUrl ? (
+                  <img src={platformSettings.logoUrl} alt="Logo" className="w-9 h-9 object-contain rounded-lg" />
+                ) : (
+                  <div 
+                    className="w-9 h-9 flex items-center justify-center text-white font-bold shadow-xs"
+                    style={{ backgroundColor: platformSettings.primaryColor, borderRadius: platformSettings.buttonRadius }}
+                  >
+                    <Award className="w-5 h-5" />
+                  </div>
+                )}
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900 leading-tight">
+                    {platformSettings.siteTitle || "CertiDesk Pro"}
+                  </h4>
+                  <p className="text-[10px] text-slate-500">
+                    {platformSettings.siteSubtitle || "Institute & Certificate SaaS"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Mock Action Buttons Preview */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  className="w-full py-3 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  style={{
+                    backgroundColor: platformSettings.primaryColor,
+                    borderRadius: platformSettings.buttonRadius,
+                  }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Sample Primary Button</span>
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="w-1/2 py-2 text-white font-semibold text-xs shadow-xs"
+                    style={{
+                      backgroundColor: platformSettings.primaryColor,
+                      borderRadius: platformSettings.buttonRadius,
+                      opacity: 0.85
+                    }}
+                  >
+                    Action Button
+                  </button>
+                  <button
+                    type="button"
+                    className="w-1/2 py-2 bg-white border border-slate-300 text-slate-700 font-semibold text-xs shadow-2xs"
+                    style={{
+                      borderRadius: platformSettings.buttonRadius,
+                    }}
+                  >
+                    Secondary Button
+                  </button>
+                </div>
+              </div>
+
+              {/* Color Details Card */}
+              <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs font-mono space-y-1 text-slate-600">
+                <div className="flex justify-between">
+                  <span>Selected Hex:</span>
+                  <span className="font-bold text-slate-900">{platformSettings.primaryColor}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Border Curvature:</span>
+                  <span className="font-bold text-slate-900">{platformSettings.buttonRadius}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Brand Mark:</span>
+                  <span className="font-bold text-slate-900">{platformSettings.logoUrl ? "Custom Image URL" : "Default SVG"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL 1: WALLET ADJUSTMENT & PROMO CREDIT */}
       {showCreditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
@@ -875,36 +1174,52 @@ export default function SuperAdminMasterControlPage() {
             </p>
 
             <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl font-bold">
+              <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-xl font-bold text-[11px]">
                 <button
                   type="button"
                   onClick={() => setCreditType("credit")}
-                  className={`py-2 rounded-lg transition-all ${
-                    creditType === "credit" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600"
+                  className={`py-2 px-1 rounded-lg transition-all text-center cursor-pointer ${
+                    creditType === "credit" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  + Add Credit (Grant)
+                  + Add Credit
                 </button>
                 <button
                   type="button"
                   onClick={() => setCreditType("debit")}
-                  className={`py-2 rounded-lg transition-all ${
-                    creditType === "debit" ? "bg-rose-600 text-white shadow-xs" : "text-slate-600"
+                  className={`py-2 px-1 rounded-lg transition-all text-center cursor-pointer ${
+                    creditType === "debit" ? "bg-rose-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  - Deduct Balance
+                  - Deduct
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCreditType("set_exact")}
+                  className={`py-2 px-1 rounded-lg transition-all text-center cursor-pointer ${
+                    creditType === "set_exact" ? "bg-indigo-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  = Set Exact (Overwrite)
                 </button>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Amount (₹)</label>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {creditType === "set_exact" ? "Set New Exact Wallet Balance (₹)" : "Amount (₹)"}
+                </label>
                 <input
                   type="number"
                   value={creditAmount}
                   onChange={(e) => setCreditAmount(Number(e.target.value))}
                   className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-sm"
-                  min="1"
+                  min="0"
                 />
+                {creditType === "set_exact" && (
+                  <span className="text-[10px] text-indigo-600 block mt-1 font-semibold">
+                    Super Admin Overwrite: Directly updates wallet balance from ₹{showCreditModal.walletBalance.toLocaleString()} to ₹{creditAmount.toLocaleString()}.
+                  </span>
+                )}
               </div>
 
               <div>
@@ -914,7 +1229,7 @@ export default function SuperAdminMasterControlPage() {
                   value={creditNote}
                   onChange={(e) => setCreditNote(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border rounded-xl"
-                  placeholder="e.g. Welcome promo / refund"
+                  placeholder="e.g. Welcome promo / manual balance correction"
                 />
               </div>
             </div>
