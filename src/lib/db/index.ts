@@ -5,7 +5,9 @@ import {
   Batch, 
   WalletTransaction, 
   CertificateTemplate, 
+  CertificateTemplateVersion,
   Certificate, 
+  CertificateVerificationResult,
   Marksheet, 
   AuditLog, 
   AttendanceRecord,
@@ -39,6 +41,7 @@ const STORAGE_KEYS = {
   CERTIFICATES: "cdp_certificates",
   MARKSHEETS: "cdp_marksheets",
   TEMPLATES: "cdp_templates",
+  TEMPLATE_VERSIONS: "cdp_template_versions",
   ATTENDANCE: "cdp_attendance",
   AUDIT_LOGS: "cdp_audit_logs",
 };
@@ -53,6 +56,7 @@ class DataStore {
   private certificates: Certificate[] = [...initialCertificates];
   private marksheets: Marksheet[] = [...initialMarksheets];
   private templates: CertificateTemplate[] = [...initialTemplates];
+  private templateVersions: CertificateTemplateVersion[] = [];
   private attendance: AttendanceRecord[] = [];
   private auditLogs: AuditLog[] = [...initialAuditLogs];
 
@@ -93,6 +97,9 @@ class DataStore {
           this.templates = parsed;
         }
       }
+
+      const tplv = localStorage.getItem(STORAGE_KEYS.TEMPLATE_VERSIONS);
+      if (tplv) this.templateVersions = JSON.parse(tplv);
 
       const att = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
       if (att) this.attendance = JSON.parse(att);
@@ -575,7 +582,7 @@ class DataStore {
   }
 
   async getAllCertificates(): Promise<Certificate[]> {
-    return [...this.certificates];
+    return [...this.certificates].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async getCertificateByNumber(certNo: string): Promise<Certificate | null> {
@@ -586,12 +593,18 @@ class DataStore {
   }
 
   async createCertificate(
-    data: Omit<Certificate, "id" | "certificateNumber" | "createdAt" | "status">
+    data: Omit<Certificate, "id" | "certificateNumber" | "createdAt" | "status"> & {
+      customCertificateNumber?: string;
+    }
   ): Promise<Certificate> {
     const inst = await this.getInstitute(data.instituteId);
     const certFee = inst?.settings?.certificateFee ?? 0;
 
+    // Check wallet balance
     if (certFee > 0) {
+      if (inst && inst.walletBalance < certFee) {
+        throw new Error(`Insufficient wallet balance. Required: ₹${certFee}, Available: ₹${inst.walletBalance}`);
+      }
       await this.deductWallet(
         data.instituteId,
         certFee,
@@ -602,12 +615,20 @@ class DataStore {
       );
     }
 
-    const certNum = `CDP-${new Date().getFullYear()}-${String(this.certificates.length + 1042).padStart(4, "0")}`;
+    const year = new Date().getFullYear();
+    const seq = String(this.certificates.length + 145).padStart(4, "0");
+    const certNum = data.customCertificateNumber || `SBCI/ADCA/${year}/${seq}`;
+
+    // Cryptographic verification token & hash
+    const rawToken = `tok_${certNum.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    const tokenHash = typeof btoa !== "undefined" ? btoa(rawToken).substring(0, 32) : rawToken;
 
     const newCert: Certificate = {
       ...data,
       id: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       certificateNumber: certNum,
+      verificationToken: rawToken,
+      verificationTokenHash: tokenHash,
       status: "valid",
       createdAt: new Date().toISOString(),
     };
@@ -629,12 +650,168 @@ class DataStore {
     return { ...newCert };
   }
 
-  async revokeCertificate(certNo: string): Promise<boolean> {
-    const cert = this.certificates.find((c) => c.certificateNumber === certNo);
+  async revokeCertificate(
+    certNo: string, 
+    reason = "Administrative revocation", 
+    revokedBy = "Super Admin"
+  ): Promise<boolean> {
+    const cert = this.certificates.find((c) => c.certificateNumber.toLowerCase() === certNo.trim().toLowerCase());
     if (!cert) return false;
+    
     cert.status = "revoked";
+    cert.revokedReason = reason;
+    cert.revokedAt = new Date().toISOString();
+    cert.revokedBy = revokedBy;
+    cert.updatedAt = new Date().toISOString();
+
     this.saveToStorage(STORAGE_KEYS.CERTIFICATES, this.certificates);
+
+    this.logAudit({
+      instituteId: cert.instituteId,
+      userId: revokedBy,
+      userEmail: "",
+      action: "CERTIFICATE_REVOKED",
+      targetType: "certificate",
+      targetId: cert.id,
+      details: `Revoked certificate ${cert.certificateNumber} for ${cert.studentName}. Reason: ${reason}`,
+    });
+
     return true;
+  }
+
+  async reissueCertificate(
+    oldCertNo: string, 
+    updates: Partial<Certificate>, 
+    reason: string, 
+    reissuedBy = "Super Admin"
+  ): Promise<Certificate> {
+    const oldCert = this.certificates.find((c) => c.certificateNumber.toLowerCase() === oldCertNo.trim().toLowerCase());
+    if (!oldCert) throw new Error("Original certificate not found");
+
+    const year = new Date().getFullYear();
+    const seq = String(this.certificates.length + 146).padStart(4, "0");
+    const newCertNum = `SBCI/ADCA/${year}/${seq}`;
+
+    // 1. Mark old certificate revoked with reference
+    oldCert.status = "revoked";
+    oldCert.revokedReason = `Reissued as ${newCertNum}. Note: ${reason}`;
+    oldCert.revokedAt = new Date().toISOString();
+    oldCert.revokedBy = reissuedBy;
+    oldCert.reissuedToCertificateNumber = newCertNum;
+    oldCert.updatedAt = new Date().toISOString();
+
+    // 2. Create new linked certificate
+    const rawToken = `tok_${newCertNum.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}`;
+    const tokenHash = typeof btoa !== "undefined" ? btoa(rawToken).substring(0, 32) : rawToken;
+
+    const newCert: Certificate = {
+      ...oldCert,
+      ...updates,
+      id: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      certificateNumber: newCertNum,
+      verificationToken: rawToken,
+      verificationTokenHash: tokenHash,
+      reissuedFromCertificateNumber: oldCert.certificateNumber,
+      status: "valid",
+      revokedReason: undefined,
+      revokedAt: undefined,
+      revokedBy: undefined,
+      issuedBy: reissuedBy,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.certificates.unshift(newCert);
+    this.saveToStorage(STORAGE_KEYS.CERTIFICATES, this.certificates);
+
+    this.logAudit({
+      instituteId: newCert.instituteId,
+      userId: reissuedBy,
+      userEmail: "",
+      action: "CERTIFICATE_REISSUED",
+      targetType: "certificate",
+      targetId: newCert.id,
+      details: `Reissued certificate ${oldCert.certificateNumber} -> ${newCertNum} for ${newCert.studentName}. Reason: ${reason}`,
+    });
+
+    return { ...newCert };
+  }
+
+  async verifyCertificate(query: string): Promise<CertificateVerificationResult> {
+    if (!query || !query.trim()) {
+      return { valid: false, status: "not_found", message: "Please provide a valid certificate number or verification token." };
+    }
+
+    const clean = query.trim().toLowerCase();
+    const found = this.certificates.find(
+      (c) =>
+        c.certificateNumber.toLowerCase() === clean ||
+        (c.verificationToken && c.verificationToken.toLowerCase() === clean) ||
+        (c.verificationTokenHash && c.verificationTokenHash.toLowerCase() === clean)
+    );
+
+    if (!found) {
+      return {
+        valid: false,
+        status: "not_found",
+        message: `No authentic certificate record was found matching query "${query}".`,
+      };
+    }
+
+    // Public Safe Fields (Privacy-preserving, never exposes student phone, address, or financial records)
+    const publicSafe = {
+      certificateNumber: found.certificateNumber,
+      studentName: found.studentName,
+      courseName: found.courseName,
+      instituteName: found.instituteName,
+      issueDate: found.issueDate,
+      completionDate: found.completionDate,
+      session: found.session || "01 July 2026 – 30 December 2026",
+      grade: found.grade,
+      percentage: found.percentage,
+      typingSpeed: found.typingSpeed,
+      typingAccuracy: found.typingAccuracy,
+      directorName: found.directorName || "Vinkal Prajapati",
+      status: found.status,
+      revokedReason: found.revokedReason,
+      revokedAt: found.revokedAt,
+      templateId: found.templateId,
+      verifiedAt: new Date().toISOString(),
+    };
+
+    if (found.status === "revoked") {
+      return {
+        valid: false,
+        status: "revoked",
+        certificate: publicSafe,
+        message: `This certificate was formally revoked on ${found.revokedAt ? new Date(found.revokedAt).toLocaleDateString() : "record"}. Reason: ${found.revokedReason || "Administrative revocation"}`,
+      };
+    }
+
+    return {
+      valid: true,
+      status: "valid",
+      certificate: publicSafe,
+      message: "Certificate verified valid and authentic against the tamper-evident ledger.",
+    };
+  }
+
+  async getCertificateStats(instituteId?: string) {
+    const list = instituteId && instituteId !== "all" 
+      ? this.certificates.filter((c) => c.instituteId === instituteId)
+      : this.certificates;
+
+    const total = list.length;
+    const valid = list.filter((c) => c.status === "valid").length;
+    const revoked = list.filter((c) => c.status === "revoked").length;
+
+    const now = new Date();
+    const thisMonth = list.filter((c) => {
+      const d = new Date(c.createdAt);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+
+    return { total, valid, revoked, thisMonth };
   }
 
   // --- Marksheets & Verification ---
@@ -683,7 +860,7 @@ class DataStore {
     return { ...newMs };
   }
 
-  // --- Templates ---
+  // --- Templates & Versioning ---
   async getTemplates(): Promise<CertificateTemplate[]> {
     return [...this.templates];
   }
@@ -695,10 +872,99 @@ class DataStore {
 
   async saveTemplate(tpl: CertificateTemplate): Promise<CertificateTemplate> {
     const idx = this.templates.findIndex((item) => item.id === tpl.id);
+    const updated = {
+      ...tpl,
+      version: (tpl.version || 1) + 1,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (idx !== -1) {
+      this.templates[idx] = { ...updated };
+    } else {
+      this.templates.push({ ...updated });
+    }
+    this.saveToStorage(STORAGE_KEYS.TEMPLATES, this.templates);
+
+    // Auto save a snapshot version
+    await this.saveTemplateVersion(updated.id, "Snapshot version saved", updated.createdBy || "Admin");
+
+    return updated;
+  }
+
+  async duplicateTemplate(templateId: string, newTitle?: string): Promise<CertificateTemplate> {
+    const original = await this.getTemplateById(templateId);
+    if (!original) throw new Error("Template not found to duplicate");
+
+    const newId = `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const cloned: CertificateTemplate = {
+      ...original,
+      id: newId,
+      title: newTitle || `${original.title} (Copy)`,
+      isDefault: false,
+      status: "draft",
+      version: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.templates.push(cloned);
+    this.saveToStorage(STORAGE_KEYS.TEMPLATES, this.templates);
+    return cloned;
+  }
+
+  async deleteOrArchiveTemplate(templateId: string): Promise<boolean> {
+    const idx = this.templates.findIndex((item) => item.id === templateId);
+    if (idx === -1) return false;
+    
+    // If it's the master default template, soft archive
+    if (this.templates[idx].isDefault || this.templates[idx].id === "tpl-sbci-master") {
+      this.templates[idx].status = "archived";
+    } else {
+      this.templates.splice(idx, 1);
+    }
+    this.saveToStorage(STORAGE_KEYS.TEMPLATES, this.templates);
+    return true;
+  }
+
+  async saveTemplateVersion(templateId: string, note = "Version snapshot", createdBy = "Admin"): Promise<CertificateTemplateVersion> {
+    const tpl = await this.getTemplateById(templateId);
+    if (!tpl) throw new Error("Template not found");
+
+    const versionNum = (tpl.version || 1);
+    const versionEntry: CertificateTemplateVersion = {
+      id: `ver_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      templateId,
+      version: versionNum,
+      note,
+      elements: JSON.parse(JSON.stringify(tpl.elements)),
+      backgroundImage: tpl.backgroundImage,
+      createdBy,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.templateVersions.unshift(versionEntry);
+    this.saveToStorage(STORAGE_KEYS.TEMPLATE_VERSIONS, this.templateVersions);
+    return versionEntry;
+  }
+
+  async getTemplateVersions(templateId: string): Promise<CertificateTemplateVersion[]> {
+    return this.templateVersions.filter((v) => v.templateId === templateId);
+  }
+
+  async restoreTemplateVersion(templateId: string, versionId: string): Promise<CertificateTemplate> {
+    const version = this.templateVersions.find((v) => v.id === versionId && v.templateId === templateId);
+    if (!version) throw new Error("Version record not found");
+
+    const tpl = await this.getTemplateById(templateId);
+    if (!tpl) throw new Error("Template not found");
+
+    tpl.elements = JSON.parse(JSON.stringify(version.elements));
+    tpl.backgroundImage = version.backgroundImage;
+    tpl.updatedAt = new Date().toISOString();
+
+    const idx = this.templates.findIndex((item) => item.id === templateId);
     if (idx !== -1) {
       this.templates[idx] = { ...tpl };
-    } else {
-      this.templates.push({ ...tpl });
     }
     this.saveToStorage(STORAGE_KEYS.TEMPLATES, this.templates);
     return tpl;

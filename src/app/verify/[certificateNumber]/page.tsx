@@ -112,6 +112,12 @@ export default function CertificateVerificationPage() {
                 <p><strong>Candidate:</strong> {certificate.studentName}</p>
                 <p><strong>Institute:</strong> {certificate.instituteName}</p>
                 <p><strong>Certificate No:</strong> <span className="font-mono">{certificate.certificateNumber}</span></p>
+                {certificate.revokedReason && (
+                  <p><strong>Revocation Reason:</strong> <span className="text-rose-700 font-semibold">{certificate.revokedReason}</span></p>
+                )}
+                {certificate.revokedAt && (
+                  <p><strong>Revoked On:</strong> {new Date(certificate.revokedAt).toLocaleString()}</p>
+                )}
               </div>
             </div>
           ) : (

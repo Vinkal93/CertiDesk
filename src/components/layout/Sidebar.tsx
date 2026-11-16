@@ -93,9 +93,9 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
       title: "Certificate Management",
       items: [
         { name: "Generate Certificate", href: "/certificates/generate", icon: Award },
-        { name: "Certificate Templates", href: "/certificates/templates", icon: Layers },
-        { name: "Certificate History", href: "/certificates/history", icon: History },
-        { name: "Verification (QR)", href: "/verification", icon: QrCode },
+        { name: "Certificate Designer", href: "/certificates/templates", icon: Layers },
+        { name: "Certificate Ledger", href: "/certificates/history", icon: History },
+        { name: "Public Verification", href: "/verify", icon: QrCode },
       ],
     },
     {

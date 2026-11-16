@@ -30,7 +30,8 @@ import {
   CreditCard,
   Key,
   Copy,
-  Check
+  Check,
+  FileCheck
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { dataStore } from "@/lib/db";
@@ -329,18 +330,35 @@ export default function SuperAdminMasterControlPage() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setShowAddInstituteModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>+ Onboard Institute</span>
             </button>
 
             <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 backdrop-blur-xs transition-all"
+              href="/certificates/templates"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 backdrop-blur-xs transition-all"
             >
-              <Building className="w-4 h-4 text-amber-300" />
-              <span>Open Institute View</span>
+              <Award className="w-4 h-4 text-purple-300" />
+              <span>Certificate Studio</span>
+            </Link>
+
+            <Link
+              href="/certificates/history"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 backdrop-blur-xs transition-all"
+            >
+              <FileCheck className="w-4 h-4 text-emerald-300" />
+              <span>Certificates Ledger</span>
+            </Link>
+
+            <Link
+              href="/verify"
+              target="_blank"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 backdrop-blur-xs transition-all"
+            >
+              <ShieldCheck className="w-4 h-4 text-amber-300" />
+              <span>Public Verification</span>
             </Link>
           </div>
         </div>

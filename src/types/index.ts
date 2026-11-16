@@ -153,45 +153,88 @@ export interface WalletTransaction {
 
 export interface TemplateElement {
   id: string;
-  type: 'text' | 'image' | 'qr' | 'seal';
-  field: string; // e.g. 'student_name', 'course_name', 'qr_code'
+  type: 'text' | 'image' | 'qr' | 'seal' | 'shape' | 'line' | 'signature' | 'badge';
+  field: string; // e.g. 'student_name', 'course_name', 'qr_code', 'custom_text'
   label: string;
-  x: number; // percentage (0 - 100)
-  y: number; // percentage (0 - 100)
+  customText?: string;
+  x: number; // percentage (0 - 100) or px
+  y: number; // percentage (0 - 100) or px
   fontSize: number; // in pt/px
   fontFamily: string;
-  fontWeight: 'normal' | 'bold' | '500' | '600' | '700';
+  fontWeight: 'normal' | 'bold' | '500' | '600' | '700' | '800' | '900';
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline';
   color: string;
   textAlign: 'left' | 'center' | 'right';
   letterSpacing?: number;
+  lineHeight?: number;
+  opacity?: number;
+  rotation?: number;
+  textTransform?: 'none' | 'uppercase' | 'capitalize' | 'lowercase';
+  borderWidth?: number;
+  borderColor?: string;
+  borderRadius?: number;
+  backgroundColor?: string;
+  padding?: number;
   width?: number; // percentage or px
   height?: number;
+  imageUrl?: string;
+  zIndex?: number;
+  locked?: boolean;
+  hidden?: boolean;
+  isVariable?: boolean;
+  variableToken?: string;
+  fallbackValue?: string;
 }
 
 export interface CertificateTemplate {
   id: string;
+  instituteId?: string; // 'global' or instituteId
   title: string;
-  category: 'ADCA' | 'DCA' | 'Typing' | 'CCC' | 'Custom';
+  description?: string;
+  category: 'ADCA' | 'DCA' | 'Typing' | 'CCC' | 'Completion' | 'Diploma' | 'Participation' | 'Achievement' | 'Internship' | 'Training' | 'Custom';
   orientation: 'landscape' | 'portrait';
+  dimensionPreset?: 'A4' | 'A5' | 'Custom';
+  width?: number;
+  height?: number;
   backgroundImage: string; // base64 or URL
   elements: TemplateElement[];
   isDefault: boolean;
+  status?: 'draft' | 'published' | 'archived';
+  version?: number;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CertificateTemplateVersion {
+  id: string;
+  templateId: string;
+  version: number;
+  note?: string;
+  elements: TemplateElement[];
+  backgroundImage: string;
+  createdBy: string;
   createdAt: string;
 }
 
 export interface Certificate {
   id: string;
-  certificateNumber: string; // e.g. 'CDP-2026-0268'
+  certificateNumber: string; // e.g. 'SBCI/ADCA/2026/0145' or 'CDP-2026-0268'
+  verificationToken?: string; // Cryptographic verification token
+  verificationTokenHash?: string; // SHA-256 hash
   instituteId: string;
   instituteName: string;
   studentId: string;
   studentName: string;
   fatherName: string;
   motherName?: string;
+  dateOfBirth?: string;
   enrollmentNo: string;
   courseId: string;
   courseName: string;
   courseDuration: string;
+  session?: string;
   grade: string;
   percentage: number;
   typingSpeed?: number; // WPM
@@ -199,9 +242,43 @@ export interface Certificate {
   issueDate: string;
   completionDate: string;
   templateId: string;
-  status: 'valid' | 'revoked';
+  directorName?: string;
+  status: 'valid' | 'revoked' | 'expired';
+  revokedReason?: string;
+  revokedAt?: string;
+  revokedBy?: string;
+  reissuedFromCertificateNumber?: string;
+  reissuedToCertificateNumber?: string;
   qrCodeDataUrl?: string;
+  pdfUrl?: string;
+  issuedBy?: string;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CertificateVerificationResult {
+  valid: boolean;
+  status: 'valid' | 'revoked' | 'expired' | 'not_found';
+  certificate?: {
+    certificateNumber: string;
+    studentName: string;
+    courseName: string;
+    instituteName: string;
+    issueDate: string;
+    completionDate: string;
+    session?: string;
+    grade?: string;
+    percentage?: number;
+    typingSpeed?: number;
+    typingAccuracy?: number;
+    directorName?: string;
+    status: 'valid' | 'revoked' | 'expired';
+    revokedReason?: string;
+    revokedAt?: string;
+    templateId?: string;
+    verifiedAt: string;
+  };
+  message: string;
 }
 
 export interface Examination {

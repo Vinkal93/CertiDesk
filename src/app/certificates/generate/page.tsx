@@ -116,6 +116,7 @@ function GenerateCertificateContent() {
         courseId: currentStudent.courseId,
         courseName: currentStudent.courseName,
         courseDuration: currentStudent.courseDuration,
+        session: sessionPeriod,
         grade,
         percentage,
         typingSpeed: certType.includes("Typing") ? typingSpeed : undefined,
@@ -123,15 +124,16 @@ function GenerateCertificateContent() {
         issueDate,
         completionDate,
         templateId: currentTemplate.id,
+        directorName,
         qrCodeDataUrl,
       });
 
       setSuccessCertNumber(cert.certificateNumber);
 
-      // 2. Render high-res canvas and export to A4 PDF or PNG
+      // 2. Render high-res canvas (3x scale ~300 DPI print quality) and export to A4 PDF or PNG
       if (canvasRef.current) {
         const canvas = await html2canvas(canvasRef.current, {
-          scale: 2, // 2x high resolution
+          scale: 3, // 3x ultra-sharp 300 DPI print output
           useCORS: true,
           logging: false,
         });
