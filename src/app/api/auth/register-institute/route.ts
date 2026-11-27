@@ -88,8 +88,37 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Generate Guaranteed Unique, Transaction-Safe Institute ID (e.g. SBCI-2026-00001)
-    const codePrefix = (body.prefix || body.code || "SBCI").toUpperCase();
+    // 3. Assign a globally unique, stable institute code, then create the institute record ID.
+    const explicitlyRequestedCode = Boolean(body.prefix || body.code);
+    const requestedCode = String(body.prefix || body.code || "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 8);
+    const baseCode = requestedCode || instituteName.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) || "INST";
+    let codePrefix = baseCode;
+    let suffix = 2;
+    while (allInstitutes.some((item) => (item.code || "").toUpperCase() === codePrefix)) {
+      if (explicitlyRequestedCode) {
+        return NextResponse.json(
+          { success: false, error: `Institute code "${codePrefix}" is already in use. Please choose another unique code.` },
+          { status: 409 }
+        );
+      }
+      const suffixText = String(suffix++);
+      codePrefix = `${baseCode.slice(0, 8 - suffixText.length)}${suffixText}`;
+    }
+    if (codePrefix.length < 2) {
+      return NextResponse.json({ success: false, error: "Institute code must contain at least 2 letters or numbers." }, { status: 400 });
+    }
+    if (adminDb) {
+      const codeSnapshot = await adminDb.collection("institutes").where("code", "==", codePrefix).limit(1).get();
+      if (!codeSnapshot.empty) {
+        return NextResponse.json(
+          { success: false, error: `Institute code "${codePrefix}" is already registered. Please choose another unique code.` },
+          { status: 409 }
+        );
+      }
+    }
     const instituteId = dataStore.generateUniqueInstituteId(codePrefix);
 
     // 4. Provision Firebase Authentication Account
