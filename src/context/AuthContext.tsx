@@ -38,7 +38,7 @@ interface AuthContextType {
   loginFirebase: (
     email: string, 
     pass: string, 
-    requestedRole?: "super_admin" | "institute_admin"
+    requestedRole?: "super_admin" | "institute_admin" | "student"
   ) => Promise<boolean>;
   loginSuperAdmin: (
     email: string,
