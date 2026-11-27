@@ -118,6 +118,97 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const action = body.action || "create-login";
 
+    // --- MIGRATE LEGACY STUDENT LOGIN IDS TO THE PUBLIC STU{CODE}{00001} FORMAT ---
+    if (action === "migrate-ids") {
+      if (!adminAuth) {
+        return NextResponse.json({ success: false, error: "Migration requires Firebase Admin credentials." }, { status: 503 });
+      }
+      const instituteId = payload.role === "super_admin" ? body.instituteId : payload.instituteId;
+      if (!instituteId || instituteId === "all") {
+        return NextResponse.json({ success: false, error: "Select one institute for ID migration." }, { status: 400 });
+      }
+      if (payload.role !== "super_admin" && payload.instituteId !== instituteId) {
+        return NextResponse.json({ success: false, error: "Cross-institute migration is not permitted." }, { status: 403 });
+      }
+
+      const students = (await dataStore.getAllStudents()).filter((student) => student.instituteId === instituteId);
+      let migrated = 0;
+      let idsAssigned = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const originalStudent of students) {
+        try {
+          const allocatedCode = originalStudent.studentCode ? undefined : await allocateStudentCodeForInstitute(instituteId);
+          const student = await dataStore.ensureStudentCode(originalStudent.id, allocatedCode || undefined) || originalStudent;
+          if (!originalStudent.studentCode && student.studentCode) idsAssigned++;
+
+          const account = await dataStore.getStudentAccount(student.id);
+          if (!account) continue;
+          const publicStudentId = student.studentCode || allocatedCode;
+          if (!publicStudentId) { failed++; continue; }
+
+          const authEmail = `${publicStudentId.toLowerCase()}@student.certidesk.pro`;
+          if (account.loginId === publicStudentId && account.authEmail === authEmail) {
+            skipped++;
+            continue;
+          }
+
+          await adminAuth.updateUser(account.uid, { email: authEmail, disabled: account.accountStatus !== "active" });
+          await adminAuth.setCustomUserClaims(account.uid, {
+            role: "student",
+            instituteId: student.instituteId,
+            studentId: student.id,
+          });
+
+          const updatedAccount = await dataStore.updateStudentAccount(account.uid, {
+            loginId: publicStudentId,
+            authEmail,
+          });
+
+          if (adminDb) {
+            await adminDb.collection("users").doc(account.uid).set({
+              uid: account.uid,
+              email: authEmail,
+              role: "student",
+              instituteId: student.instituteId,
+              institute_id: student.instituteId,
+              studentId: student.id,
+              student_id: student.id,
+              studentCode: publicStudentId,
+              account_status: account.accountStatus,
+              status: account.accountStatus,
+              updated_at: new Date().toISOString(),
+            }, { merge: true });
+            await adminDb.collection("institutes").doc(instituteId).collection("student_accounts").doc(account.uid).set(updatedAccount, { merge: true });
+            await adminDb.collection("student_login_mappings").doc(publicStudentId).set({
+              uid: account.uid,
+              instituteId,
+              studentId: student.id,
+              studentCode: publicStudentId,
+              authEmail,
+              accountStatus: account.accountStatus,
+            }, { merge: true });
+          }
+          migrated++;
+        } catch (migrationError) {
+          console.warn("Student ID migration skipped:", originalStudent.id, migrationError);
+          failed++;
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Student ID migration completed.",
+        instituteId,
+        totalStudents: students.length,
+        idsAssigned,
+        migrated,
+        skipped,
+        failed,
+      });
+    }
+
     // --- ACTION 1: CREATE LOGIN FOR SINGLE STUDENT ---
     if (action === "create-login") {
       let { studentId, customPassword, password, fullName, enrollmentNo, loginId, loginEmail, mustChangePassword } = body;
