@@ -199,7 +199,7 @@ class DataStore {
   }
 
   generateUniqueInstituteId(prefix = "SBCI", year = new Date().getFullYear()): string {
-    const cleanPrefix = (prefix || "SBCI").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "SBCI";
+    const cleanPrefix = (prefix || "SBCI").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "SBCI";
     const pattern = new RegExp(`^${cleanPrefix}-${year}-(\\d+)$`, "i");
     let maxSeq = 0;
 
