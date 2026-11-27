@@ -309,8 +309,9 @@ export default function StudentLoginManagementPage() {
   // Export permitted CSV
   const handleExportCSV = () => {
     const rows = [
-      ["Enrollment No", "Student Name", "Course", "Login ID / Email", "Account Status", "Password Status", "Last Login"],
+      ["Student ID", "Enrollment No", "Student Name", "Course", "Login ID", "Account Status", "Password Status", "Last Login"],
       ...filteredStudents.map((s) => [
+        s.studentCode || s.loginId,
         s.enrollmentNo,
         s.fullName,
         s.courseName,
@@ -532,7 +533,7 @@ export default function StudentLoginManagementPage() {
                         {s.enrollmentNo}
                       </td>
                       <td className="p-3 font-mono text-[11px] text-slate-600">
-                        {s.hasAccount ? s.loginId : <span className="text-slate-400 italic">Not Provisioned</span>}
+                        {s.studentCode || s.loginId || <span className="text-slate-400 italic">Assigning ID…</span>}
                       </td>
                       <td className="p-3">
                         {s.hasAccount ? (
@@ -612,7 +613,6 @@ export default function StudentLoginManagementPage() {
                             type="button"
                             onClick={() => {
                               setShowCreateModal(s);
-                              setCustomEmail(s.email || `${s.enrollmentNo.toLowerCase().replace(/[^a-z0-9]/g, "_")}@student.certidesk`);
                               setCustomPassword(`Std@${s.enrollmentNo.split("/").pop() || "2026"}`);
                               setCreatedResult(null);
                             }}
