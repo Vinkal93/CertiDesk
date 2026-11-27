@@ -32,7 +32,11 @@ export async function GET(request: NextRequest) {
 
     // 1. Fetch Students of this Institute
     const allStudents = await dataStore.getAllStudents();
-    const instStudents = instituteId === "all" ? allStudents : allStudents.filter((s) => s.instituteId === instituteId);
+    const rawInstituteStudents = instituteId === "all" ? allStudents : allStudents.filter((s) => s.instituteId === instituteId);
+    const instStudents = await Promise.all(rawInstituteStudents.map(async (student) => {
+      const allocatedCode = student.studentCode ? undefined : await allocateStudentCodeForInstitute(student.instituteId);
+      return (await dataStore.ensureStudentCode(student.id, allocatedCode || undefined)) || student;
+    }));
 
     // 2. Fetch Existing Student Accounts
     const allAccounts = await dataStore.getStudentAccounts(instituteId === "all" ? "" : instituteId);
