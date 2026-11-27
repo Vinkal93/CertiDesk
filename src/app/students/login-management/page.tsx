@@ -31,6 +31,7 @@ import { useAuth } from "@/context/AuthContext";
 
 interface StudentAccountRow {
   studentId: string;
+  studentCode?: string;
   fullName: string;
   enrollmentNo: string;
   courseName: string;
@@ -61,7 +62,6 @@ export default function StudentLoginManagementPage() {
   // Modals
   const [showCreateModal, setShowCreateModal] = useState<StudentAccountRow | null>(null);
   const [customPassword, setCustomPassword] = useState("");
-  const [customEmail, setCustomEmail] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [createdResult, setCreatedResult] = useState<{ loginId: string; tempPass: string } | null>(null);
 
@@ -87,6 +87,30 @@ export default function StudentLoginManagementPage() {
       console.warn("Failed to load student logins:", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMigrateStudentIds = async () => {
+    if (!institute?.id) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/students/login-management", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "migrate-ids", instituteId: institute.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Student ID migration failed.");
+      setFeedback({
+        title: "Student ID Migration Complete",
+        message: `${data.idsAssigned} IDs assigned, ${data.migrated} existing logins migrated, ${data.failed} failed.`,
+        type: data.failed ? "error" : "success",
+      });
+      await loadData();
+    } catch (err: any) {
+      setFeedback({ title: "Migration Failed", message: err.message, type: "error" });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -132,7 +156,6 @@ export default function StudentLoginManagementPage() {
         body: JSON.stringify({
           action: "create-login",
           studentId: showCreateModal.studentId,
-          loginEmail: customEmail.trim() || undefined,
           customPassword: customPassword.trim() || undefined,
         }),
       });
@@ -338,6 +361,15 @@ export default function StudentLoginManagementPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleMigrateStudentIds}
+            disabled={actionLoading || loading}
+            className="inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${actionLoading ? "animate-spin" : ""}`} />
+            <span>Migrate Student IDs</span>
+          </button>
           <button
             type="button"
             onClick={loadData}
@@ -667,24 +699,14 @@ export default function StudentLoginManagementPage() {
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-1">
                   <div className="font-bold text-slate-900">{showCreateModal.fullName}</div>
                   <div className="text-[11px] text-slate-500">
-                    Enrollment: <strong>{showCreateModal.enrollmentNo}</strong> • Course: {showCreateModal.courseName}
+                    Student ID: <strong>{showCreateModal.studentCode || "Assigned on migration"}</strong> • Enrollment: {showCreateModal.enrollmentNo} • Course: {showCreateModal.courseName}
                   </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Student Login Email / Identifier *
-                  </label>
-                  <input
-                    type="email"
-                    value={customEmail}
-                    onChange={(e) => setCustomEmail(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-slate-900"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Student will log in with this email identifier in Firebase Authentication.
-                  </p>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">AUTO-GENERATED STUDENT LOGIN ID</label>
+                  <div className="font-mono text-base font-black text-slate-900">{showCreateModal.studentCode || "Assigned during account creation"}</div>
+                  <p className="text-[10px] text-slate-500 mt-1">Student will sign in using this ID and the password you set below.</p>
                 </div>
 
                 <div>
