@@ -59,48 +59,24 @@ export async function createOrSyncSession(params: SyncSessionParams): Promise<Au
 
   // 1. If Firebase ID token is provided, verify it
   if (idToken) {
-    if (adminAuth) {
-      try {
-        const decoded = await adminAuth.verifyIdToken(idToken);
-        uid = decoded.uid;
-        email = (decoded.email || email).toLowerCase().trim();
-        displayName = decoded.name || displayName;
-        tokenRole = decoded.role as string | undefined;
-        tokenInstituteId = decoded.instituteId as string | undefined;
-        tokenStudentId = decoded.studentId as string | undefined;
-      } catch (err: any) {
-        console.warn("adminAuth.verifyIdToken failed, decoding token payload:", err.message);
-        // Fallback: parse unverified payload safely to extract uid and email
-        try {
-          const parts = idToken.split(".");
-          if (parts.length === 3) {
-            const raw = Buffer.from(parts[1], "base64").toString("utf-8");
-            const payload = JSON.parse(raw);
-            uid = payload.user_id || payload.sub || `usr_${Date.now()}`;
-            email = (payload.email || email).toLowerCase().trim();
-            displayName = payload.name || displayName;
-            tokenRole = payload.role;
-          }
-        } catch (e) {
-          return { success: false, error: "Invalid Firebase authentication token." };
-        }
-      }
-    } else {
-      // Decode client token payload
-      try {
-        const parts = idToken.split(".");
-        if (parts.length === 3) {
-          const raw = Buffer.from(parts[1], "base64").toString("utf-8");
-          const payload = JSON.parse(raw);
-          uid = payload.user_id || payload.sub || `usr_${Date.now()}`;
-          email = (payload.email || email).toLowerCase().trim();
-          displayName = payload.name || displayName;
-          tokenRole = payload.role;
-        }
-      } catch (e) {
-        return { success: false, error: "Invalid Firebase authentication token structure." };
-      }
+    if (!adminAuth) {
+      return { success: false, error: "Firebase Admin authentication is not configured." };
     }
+    try {
+      const decoded = await adminAuth.verifyIdToken(idToken);
+      uid = decoded.uid;
+      email = (decoded.email || email).toLowerCase().trim();
+      displayName = decoded.name || displayName;
+      tokenRole = decoded.role as string | undefined;
+      tokenInstituteId = decoded.instituteId as string | undefined;
+      tokenStudentId = decoded.studentId as string | undefined;
+    } catch (err) {
+      return { success: false, error: "Invalid Firebase authentication token." };
+    }
+  }
+
+  if (requestedRole === "student" && (!idToken || tokenRole !== "student")) {
+    return { success: false, error: "Student sign-in must be verified by Firebase Authentication." };
   }
 
   if (!uid) {
