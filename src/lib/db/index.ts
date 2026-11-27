@@ -513,8 +513,548 @@ class DataStore {
     return student ? { ...student } : null;
   }
 
+  generateStudentCode(instituteId: string): string {
+    const institute = this.institutes.find((item) => item.id === instituteId);
+    if (!institute) throw new Error("Institute not found");
+    const code = (institute.code || "INST").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "INST";
+    const pattern = new RegExp(`^STU${code}(\\d{5})import { 
+  Institute, 
+  Student, 
+  Course, 
+  Batch, 
+  WalletTransaction, 
+  CertificateTemplate, 
+  CertificateTemplateVersion,
+  Certificate, 
+  CertificateVerificationResult,
+  Marksheet, 
+  AuditLog, 
+  AttendanceRecord,
+  AccountStatus,
+  TransactionPurpose,
+  StudentAccount,
+  OnboardingState,
+  SuperAdminUser
+} from "@/types";
+import { 
+  initialInstitutes, 
+  initialCourses, 
+  initialBatches, 
+  initialStudents, 
+  initialTransactions, 
+  initialCertificates, 
+  initialMarksheets, 
+  initialTemplates, 
+  initialAuditLogs 
+} from "@/lib/data/initialData";
+import {
+  saveStudentFirestore,
+  saveTransactionFirestore,
+  saveInstituteFirestore,
+  updateInstituteWalletFirestore
+} from "@/lib/firebase/services";
+
+const STORAGE_KEYS = {
+  INSTITUTES: "cdp_institutes",
+  STUDENTS: "cdp_students",
+  COURSES: "cdp_courses",
+  BATCHES: "cdp_batches",
+  TRANSACTIONS: "cdp_transactions",
+  CERTIFICATES: "cdp_certificates",
+  MARKSHEETS: "cdp_marksheets",
+  TEMPLATES: "cdp_templates",
+  TEMPLATE_VERSIONS: "cdp_template_versions",
+  ATTENDANCE: "cdp_attendance",
+  AUDIT_LOGS: "cdp_audit_logs",
+  PLATFORM_SETTINGS: "cdp_platform_settings",
+  STUDENT_ACCOUNTS: "cdp_student_accounts",
+  ONBOARDING_STATES: "cdp_onboarding_states",
+  SUPER_ADMINS: "cdp_super_admins",
+};
+
+export const ROOT_MASTER_SUPER_ADMIN: SuperAdminUser = {
+  id: "su_master_vinkal",
+  name: "Vinkal Prajapati",
+  email: "vinkalp041@gmail.com",
+  password: "Vinkal@890",
+  pin: "630649",
+  role: "super_admin",
+  isMaster: true,
+  status: "active",
+  permissions: {
+    canManageInstitutes: true,
+    canManageSuperAdmins: true,
+    canManageFinancials: true,
+    canManageBranding: true,
+    canManageAuditLogs: true,
+  },
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: new Date().toISOString(),
+};
+
+export interface PlatformSettings {
+  siteTitle: string;
+  siteSubtitle: string;
+  logoUrl: string;
+  primaryColor: string;
+  buttonRadius: string;
+  themePreset: string;
+}
+
+export const initialPlatformSettings: PlatformSettings = {
+  siteTitle: "CertiDesk Pro",
+  siteSubtitle: "Institute & Certificate Management SaaS",
+  logoUrl: "",
+  primaryColor: "#0F172A",
+  buttonRadius: "12px",
+  themePreset: "slate",
+};
+
+// In-Memory store fallback
+class DataStore {
+  private institutes: Institute[] = [...initialInstitutes];
+  private students: Student[] = [...initialStudents];
+  private courses: Course[] = [...initialCourses];
+  private batches: Batch[] = [...initialBatches];
+  private transactions: WalletTransaction[] = [...initialTransactions];
+  private certificates: Certificate[] = [...initialCertificates];
+  private marksheets: Marksheet[] = [...initialMarksheets];
+  private templates: CertificateTemplate[] = [...initialTemplates];
+  private templateVersions: CertificateTemplateVersion[] = [];
+  private attendance: AttendanceRecord[] = [];
+  private auditLogs: AuditLog[] = [...initialAuditLogs];
+  private platformSettings: PlatformSettings = { ...initialPlatformSettings };
+  private studentAccounts: StudentAccount[] = [];
+  private onboardingStates: OnboardingState[] = [];
+  private superAdmins: SuperAdminUser[] = [{ ...ROOT_MASTER_SUPER_ADMIN }];
+
+  constructor() {
+    this.loadFromStorage();
+  }
+
+  private loadFromStorage() {
+    if (typeof window === "undefined") return;
+    try {
+      const inst = localStorage.getItem(STORAGE_KEYS.INSTITUTES);
+      if (inst) this.institutes = JSON.parse(inst);
+      
+      const std = localStorage.getItem(STORAGE_KEYS.STUDENTS);
+      if (std) this.students = JSON.parse(std);
+
+      const crs = localStorage.getItem(STORAGE_KEYS.COURSES);
+      if (crs) this.courses = JSON.parse(crs);
+
+      const bth = localStorage.getItem(STORAGE_KEYS.BATCHES);
+      if (bth) this.batches = JSON.parse(bth);
+
+      const tx = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+      if (tx) this.transactions = JSON.parse(tx);
+
+      const cert = localStorage.getItem(STORAGE_KEYS.CERTIFICATES);
+      if (cert) this.certificates = JSON.parse(cert);
+
+      const ms = localStorage.getItem(STORAGE_KEYS.MARKSHEETS);
+      if (ms) this.marksheets = JSON.parse(ms);
+
+      const ps = localStorage.getItem(STORAGE_KEYS.PLATFORM_SETTINGS);
+      if (ps) this.platformSettings = JSON.parse(ps);
+
+      const sa = localStorage.getItem(STORAGE_KEYS.STUDENT_ACCOUNTS);
+      if (sa) this.studentAccounts = JSON.parse(sa);
+
+      const os = localStorage.getItem(STORAGE_KEYS.ONBOARDING_STATES);
+      if (os) this.onboardingStates = JSON.parse(os);
+
+      const tpl = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
+      if (tpl) {
+        const parsed = JSON.parse(tpl);
+        if (!parsed.some((item: any) => item.id === "tpl-sbci-master")) {
+          this.templates = [initialTemplates[0], ...parsed];
+        } else {
+          this.templates = parsed;
+        }
+      }
+
+      const tplv = localStorage.getItem(STORAGE_KEYS.TEMPLATE_VERSIONS);
+      if (tplv) this.templateVersions = JSON.parse(tplv);
+
+      const att = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
+      if (att) this.attendance = JSON.parse(att);
+
+      const log = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
+      if (log) this.auditLogs = JSON.parse(log);
+
+      const su = localStorage.getItem(STORAGE_KEYS.SUPER_ADMINS);
+      if (su) {
+        const loaded: SuperAdminUser[] = JSON.parse(su);
+        if (!loaded.some((a) => a.email.toLowerCase() === ROOT_MASTER_SUPER_ADMIN.email.toLowerCase())) {
+          loaded.unshift({ ...ROOT_MASTER_SUPER_ADMIN });
+        }
+        this.superAdmins = loaded;
+      }
+    } catch (e) {
+      console.error("Storage loading error:", e);
+    }
+  }
+
+  private saveToStorage(key: string, data: unknown) {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.error(`Failed to persist ${key}:`, e);
+    }
+  }
+
+  // --- Institute Methods ---
+  async getInstitute(id: string): Promise<Institute | null> {
+    const inst = this.institutes.find((i) => i.id === id);
+    return inst ? { ...inst } : null;
+  }
+
+  async getAllInstitutes(): Promise<Institute[]> {
+    return [...this.institutes];
+  }
+
+  generateUniqueInstituteId(prefix = "SBCI", year = new Date().getFullYear()): string {
+    const cleanPrefix = (prefix || "SBCI").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "SBCI";
+    const pattern = new RegExp(`^${cleanPrefix}-${year}-(\\d+)$`, "i");
+    let maxSeq = 0;
+
+    for (const inst of this.institutes) {
+      const match = inst.id.match(pattern);
+      if (match) {
+        const seq = parseInt(match[1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+
+    const nextSeq = maxSeq + 1;
+    return `${cleanPrefix}-${year}-${String(nextSeq).padStart(5, "0")}`;
+  }
+
+  async createInstitute(data: Omit<Institute, "id" | "registeredAt"> & { id?: string }): Promise<Institute> {
+    const id = data.id || this.generateUniqueInstituteId(data.code || "SBCI");
+
+    const newInst: Institute = {
+      ...data,
+      id,
+      registeredAt: new Date().toISOString(),
+      walletBalance: data.walletBalance || 0,
+      onboarding_completed: data.onboarding_completed ?? false,
+      settings: data.settings || {
+        admissionFee: 150,
+        profileEditFee: 100,
+        certificateFee: 0,
+        marksheetFee: 0,
+        autoApproveStudents: true,
+      },
+    };
+
+    this.institutes.unshift(newInst);
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    return { ...newInst };
+  }
+
+  async updateInstituteStatus(id: string, status: AccountStatus): Promise<Institute> {
+    const idx = this.institutes.findIndex((i) => i.id === id);
+    if (idx === -1) throw new Error("Institute not found");
+    this.institutes[idx].status = status;
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    return { ...this.institutes[idx] };
+  }
+
+  async updateInstitute(id: string, updates: Partial<Institute>): Promise<Institute> {
+    const idx = this.institutes.findIndex((i) => i.id === id);
+    if (idx === -1) throw new Error("Institute not found");
+    this.institutes[idx] = { ...this.institutes[idx], ...updates };
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    return { ...this.institutes[idx] };
+  }
+
+  async updateInstitutePassword(id: string, newPassword: string): Promise<Institute> {
+    const idx = this.institutes.findIndex((i) => i.id === id);
+    if (idx === -1) throw new Error("Institute not found");
+    this.institutes[idx].password = newPassword;
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    return { ...this.institutes[idx] };
+  }
+
+  // --- Wallet & Transaction Operations (Atomic & Rule-Enforced) ---
+  async getWalletBalance(instituteId: string): Promise<number> {
+    const inst = await this.getInstitute(instituteId);
+    return inst ? inst.walletBalance : 0;
+  }
+
+  async getTransactions(instituteId: string): Promise<WalletTransaction[]> {
+    return this.transactions
+      .filter((t) => t.instituteId === instituteId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getAllTransactions(): Promise<WalletTransaction[]> {
+    return [...this.transactions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async rechargeWallet(
+    instituteId: string, 
+    amount: number, 
+    razorpayPaymentId = `pay_${Date.now()}`,
+    customDescription?: string
+  ): Promise<WalletTransaction> {
+    const inst = this.institutes.find((i) => i.id === instituteId);
+    if (!inst) throw new Error("Institute not found");
+
+    inst.walletBalance += amount;
+    const tx: WalletTransaction = {
+      id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      instituteId,
+      amount,
+      type: "credit",
+      purpose: "recharge",
+      description: customDescription || `Wallet recharged: ₹${amount.toLocaleString()} (Payment via Razorpay)`,
+      balanceAfter: inst.walletBalance,
+      razorpayPaymentId,
+      status: "success",
+      createdAt: new Date().toISOString(),
+    };
+
+    this.transactions.unshift(tx);
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    this.saveToStorage(STORAGE_KEYS.TRANSACTIONS, this.transactions);
+
+    // Sync to Firestore
+    saveInstituteFirestore(inst).catch(console.warn);
+    saveTransactionFirestore(tx).catch(console.warn);
+
+    this.logAudit({
+      instituteId,
+      userId: inst.ownerName,
+      userEmail: inst.email,
+      action: "WALLET_RECHARGE",
+      targetType: "wallet",
+      targetId: tx.id,
+      details: customDescription || `Recharged ₹${amount}. New balance: ₹${inst.walletBalance}`,
+    });
+
+    return tx;
+  }
+
+  async setExactWalletBalance(instituteId: string, exactBalance: number, note?: string): Promise<WalletTransaction> {
+    const inst = this.institutes.find((i) => i.id === instituteId);
+    if (!inst) throw new Error("Institute not found");
+
+    const oldBalance = inst.walletBalance;
+    const diff = exactBalance - oldBalance;
+    inst.walletBalance = exactBalance;
+
+    const tx: WalletTransaction = {
+      id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      instituteId,
+      amount: Math.abs(diff),
+      type: diff >= 0 ? "credit" : "debit",
+      purpose: "promo_credit",
+      description: `Super Admin Overwrite: Set balance from ₹${oldBalance.toLocaleString()} to ₹${exactBalance.toLocaleString()}${note ? ` (${note})` : ""}`,
+      balanceAfter: inst.walletBalance,
+      status: "success",
+      createdAt: new Date().toISOString(),
+    };
+
+    this.transactions.unshift(tx);
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    this.saveToStorage(STORAGE_KEYS.TRANSACTIONS, this.transactions);
+
+    // Sync to Firestore
+    saveInstituteFirestore(inst).catch(console.warn);
+    saveTransactionFirestore(tx).catch(console.warn);
+
+    this.logAudit({
+      instituteId,
+      userId: "Super Admin",
+      userEmail: "admin@certidesk.pro",
+      action: "WALLET_RECHARGE",
+      targetType: "wallet",
+      targetId: tx.id,
+      details: `Super Admin manually overwrote wallet balance to ₹${exactBalance}. Difference: ${diff >= 0 ? "+" : "-"}${Math.abs(diff)}`,
+    });
+
+    return tx;
+  }
+
+  async getPlatformSettings(): Promise<PlatformSettings> {
+    return { ...this.platformSettings };
+  }
+
+  async updatePlatformSettings(updates: Partial<PlatformSettings>): Promise<PlatformSettings> {
+    this.platformSettings = {
+      ...this.platformSettings,
+      ...updates,
+    };
+    this.saveToStorage(STORAGE_KEYS.PLATFORM_SETTINGS, this.platformSettings);
+    return { ...this.platformSettings };
+  }
+
+  async creditPromoBalance(instituteId: string, amount: number, note: string): Promise<WalletTransaction> {
+    const inst = this.institutes.find((i) => i.id === instituteId);
+    if (!inst) throw new Error("Institute not found");
+
+    inst.walletBalance += amount;
+    const tx: WalletTransaction = {
+      id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      instituteId,
+      amount,
+      type: "credit",
+      purpose: "promo_credit",
+      description: `Admin Credit: ₹${amount.toLocaleString()} - ${note}`,
+      balanceAfter: inst.walletBalance,
+      status: "success",
+      createdAt: new Date().toISOString(),
+    };
+
+    this.transactions.unshift(tx);
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    this.saveToStorage(STORAGE_KEYS.TRANSACTIONS, this.transactions);
+
+    // Sync to Firestore
+    saveInstituteFirestore(inst).catch(console.warn);
+    saveTransactionFirestore(tx).catch(console.warn);
+
+    return tx;
+  }
+
+  async deductWallet(
+    instituteId: string,
+    amount: number,
+    purpose: TransactionPurpose,
+    description: string,
+    relatedStudentId?: string,
+    studentName?: string
+  ): Promise<WalletTransaction> {
+    const inst = this.institutes.find((i) => i.id === instituteId);
+    if (!inst) throw new Error("Institute not found");
+
+    if (inst.walletBalance < amount) {
+      throw new Error(`Insufficient wallet balance. Required: ₹${amount}, Available: ₹${inst.walletBalance}. Please recharge.`);
+    }
+
+    inst.walletBalance -= amount;
+    const tx: WalletTransaction = {
+      id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      instituteId,
+      amount,
+      type: "debit",
+      purpose,
+      description,
+      balanceAfter: inst.walletBalance,
+      relatedStudentId,
+      studentName,
+      status: "success",
+      createdAt: new Date().toISOString(),
+    };
+
+    this.transactions.unshift(tx);
+    this.saveToStorage(STORAGE_KEYS.INSTITUTES, this.institutes);
+    this.saveToStorage(STORAGE_KEYS.TRANSACTIONS, this.transactions);
+
+    // Sync to Firestore
+    saveInstituteFirestore(inst).catch(console.warn);
+    saveTransactionFirestore(tx).catch(console.warn);
+
+    return tx;
+  }
+
+  // --- Student Operations ---
+  async getStudents(
+    instituteId: string,
+    filters?: { search?: string; status?: string; courseId?: string; batchId?: string; page?: number; limit?: number }
+  ): Promise<{ students: Student[]; total: number }> {
+    let list = this.students.filter((s) => s.instituteId === instituteId);
+
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      list = list.filter(
+        (s) =>
+          s.fullName.toLowerCase().includes(q) ||
+          s.enrollmentNo.toLowerCase().includes(q) ||
+          s.mobile.toLowerCase().includes(q) ||
+          s.email.toLowerCase().includes(q)
+      );
+    }
+
+    if (filters?.status && filters.status !== "All") {
+      list = list.filter((s) => s.status.toLowerCase() === filters.status?.toLowerCase());
+    }
+
+    if (filters?.courseId) {
+      list = list.filter((s) => s.courseId === filters.courseId);
+    }
+
+    if (filters?.batchId) {
+      list = list.filter((s) => s.batchId === filters.batchId);
+    }
+
+    const total = list.length;
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 50;
+    const startIndex = (page - 1) * limit;
+    const paginated = list.slice(startIndex, startIndex + limit);
+
+    return { students: paginated, total };
+  }
+
+  async getAllStudents(): Promise<Student[]> {
+    return [...this.students];
+  }
+
+  async getStudentById(id: string): Promise<Student | null> {
+    const student = this.students.find((s) => s.id === id);
+    return student ? { ...student } : null;
+  }
+
+  async getStudentByEnrollmentNo(enrollmentNo: string): Promise<Student | null> {
+    const norm = enrollmentNo.trim().toLowerCase();
+    const student = this.students.find(
+      (s) => s.enrollmentNo.trim().toLowerCase() === norm
+    );
+    return student ? { ...student } : null;
+  }
+
+  async findStudentForLogin(identifier: string): Promise<Student | null> {
+    const norm = identifier.trim().toLowerCase();
+    const student = this.students.find(
+      (s) =>
+        s.enrollmentNo.trim().toLowerCase() === norm ||
+        s.email.trim().toLowerCase() === norm ||
+        s.mobile.replace(/\D/g, "").includes(norm.replace(/\D/g, ""))
+    );
+    return student ? { ...student } : null;
+  }
+
+, "i");
+    let maxSequence = 0;
+    for (const student of this.students) {
+      if (student.instituteId !== instituteId || !student.studentCode) continue;
+      const match = student.studentCode.match(pattern);
+      if (match) maxSequence = Math.max(maxSequence, Number(match[1]));
+    }
+    return `STU${code}${String(maxSequence + 1).padStart(5, "0")}`;
+  }
+
+  async ensureStudentCode(studentId: string): Promise<Student | null> {
+    const index = this.students.findIndex((item) => item.id === studentId);
+    if (index < 0) return null;
+    if (!this.students[index].studentCode) {
+      this.students[index] = { ...this.students[index], studentCode: this.generateStudentCode(this.students[index].instituteId), updatedAt: new Date().toISOString() };
+      this.saveToStorage(STORAGE_KEYS.STUDENTS, this.students);
+      saveStudentFirestore(this.students[index]).catch(console.warn);
+    }
+    return { ...this.students[index] };
+  }
+
   async createStudent(
-    data: Omit<Student, "id" | "enrollmentNo" | "createdAt" | "updatedAt">,
+    data: Omit<Student, "id" | "studentCode" | "enrollmentNo" | "createdAt" | "updatedAt"> & { studentCode?: string },
     skipFee = false
   ): Promise<{ student: Student; transaction?: WalletTransaction }> {
     const inst = await this.getInstitute(data.instituteId);
@@ -543,6 +1083,7 @@ class DataStore {
     const newStudent: Student = {
       ...data,
       id: `std_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      studentCode: data.studentCode || this.generateStudentCode(data.instituteId),
       enrollmentNo,
       status: data.status || "Active",
       admissionFeeCharged: admissionFee,
@@ -1171,7 +1712,13 @@ class DataStore {
   }
 
   async getStudentAccount(uidOrStudentId: string): Promise<StudentAccount | null> {
-    const acc = this.studentAccounts.find((sa) => sa.uid === uidOrStudentId || sa.studentId === uidOrStudentId);
+    const acc = this.studentAccounts.find((sa) => sa.uid === uidOrStudentId || sa.studentId === uidOrStudentId || sa.loginId.toLowerCase() === uidOrStudentId.toLowerCase());
+    return acc ? { ...acc } : null;
+  }
+
+  async getStudentAccountByLoginId(loginId: string): Promise<StudentAccount | null> {
+    const normalized = loginId.trim().toUpperCase();
+    const acc = this.studentAccounts.find((item) => item.loginId.trim().toUpperCase() === normalized);
     return acc ? { ...acc } : null;
   }
 
