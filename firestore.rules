@@ -37,6 +37,12 @@ service cloud.firestore {
       }
     }
 
+    // Student ID to Firebase Auth alias mappings are server-only.
+    // The public Student ID is never used as a Firestore document path by clients.
+    match /student_login_mappings/{mappingId} {
+      allow read, write: if false;
+    }
+
     // Students collection - strict tenant boundary
     match /students/{studentId} {
       allow read, create, update, delete: if isTenantAdmin(resource.data.instituteId || request.resource.data.instituteId);
