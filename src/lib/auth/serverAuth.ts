@@ -54,6 +54,8 @@ export async function createOrSyncSession(params: SyncSessionParams): Promise<Au
   let email = explicitEmail?.toLowerCase().trim() || "";
   let displayName = reqDisplayName || "";
   let tokenRole: string | undefined;
+  let tokenInstituteId: string | undefined;
+  let tokenStudentId: string | undefined;
 
   // 1. If Firebase ID token is provided, verify it
   if (idToken) {
@@ -64,6 +66,8 @@ export async function createOrSyncSession(params: SyncSessionParams): Promise<Au
         email = (decoded.email || email).toLowerCase().trim();
         displayName = decoded.name || displayName;
         tokenRole = decoded.role as string | undefined;
+        tokenInstituteId = decoded.instituteId as string | undefined;
+        tokenStudentId = decoded.studentId as string | undefined;
       } catch (err: any) {
         console.warn("adminAuth.verifyIdToken failed, decoding token payload:", err.message);
         // Fallback: parse unverified payload safely to extract uid and email
@@ -142,8 +146,8 @@ export async function createOrSyncSession(params: SyncSessionParams): Promise<Au
     resolvedStudentId = undefined;
   } else if (requestedRole === "student" || firestoreUserData?.role === "student") {
     resolvedRole = "student";
-    resolvedInstituteId = firestoreUserData?.instituteId || firestoreUserData?.institute_id || reqInstituteId;
-    resolvedStudentId = firestoreUserData?.studentId || firestoreUserData?.student_id || reqStudentId;
+    resolvedInstituteId = firestoreUserData?.instituteId || firestoreUserData?.institute_id || tokenInstituteId || reqInstituteId;
+    resolvedStudentId = firestoreUserData?.studentId || firestoreUserData?.student_id || tokenStudentId || reqStudentId;
   } else {
     resolvedRole = "institute_admin";
     resolvedInstituteId = firestoreUserData?.instituteId || reqInstituteId;
