@@ -142,8 +142,8 @@ export async function createOrSyncSession(params: SyncSessionParams): Promise<Au
     resolvedStudentId = undefined;
   } else if (requestedRole === "student" || firestoreUserData?.role === "student") {
     resolvedRole = "student";
-    resolvedInstituteId = firestoreUserData?.instituteId || reqInstituteId;
-    resolvedStudentId = firestoreUserData?.studentId || reqStudentId;
+    resolvedInstituteId = firestoreUserData?.instituteId || firestoreUserData?.institute_id || reqInstituteId;
+    resolvedStudentId = firestoreUserData?.studentId || firestoreUserData?.student_id || reqStudentId;
   } else {
     resolvedRole = "institute_admin";
     resolvedInstituteId = firestoreUserData?.instituteId || reqInstituteId;
@@ -200,7 +200,7 @@ export async function createOrSyncSession(params: SyncSessionParams): Promise<Au
   }
 
   // 5. Check if user account itself is suspended
-  if (firestoreUserData?.status === "suspended") {
+  if (firestoreUserData?.status === "suspended" || firestoreUserData?.account_status === "inactive" || firestoreUserData?.account_status === "suspended") {
     return { success: false, error: "Your user account has been disabled by the administrator." };
   }
 
