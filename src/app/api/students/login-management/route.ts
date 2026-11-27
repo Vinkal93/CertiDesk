@@ -128,8 +128,14 @@ export async function POST(request: NextRequest) {
         student = await dataStore.findStudentForLogin(enrollmentNo);
       }
       if (!student && (fullName || enrollmentNo || loginId)) {
+        const targetInstituteId = payload.instituteId || body.instituteId;
+        if (!targetInstituteId) {
+          return NextResponse.json({ success: false, error: "Select an institute before creating a student login." }, { status: 400 });
+        }
+        const allocatedCode = await allocateStudentCodeForInstitute(targetInstituteId);
         const studentRes = await dataStore.createStudent({
-          instituteId: payload.instituteId || "SBCI1001",
+          instituteId: targetInstituteId,
+          studentCode: allocatedCode || undefined,
           fullName: fullName || "Student",
           fatherName: body.fatherName || "Father",
           motherName: body.motherName || "Mother",
@@ -188,8 +194,11 @@ export async function POST(request: NextRequest) {
 
       let authUid = `usr_std_${student.id}`;
 
-      // Provision in Firebase Authentication
-      if (adminAuth) {
+      // Provision in Firebase Authentication. Never create a fake account when Admin SDK is unavailable.
+      if (!adminAuth) {
+        return NextResponse.json({ success: false, error: "Student login provisioning is unavailable. Configure Firebase Admin credentials first." }, { status: 503 });
+      }
+      {
         try {
           let fbUser;
           try {
@@ -215,7 +224,8 @@ export async function POST(request: NextRequest) {
             studentId: student.id,
           });
         } catch (authErr: any) {
-          console.warn("adminAuth student provision notice:", authErr.message);
+          console.error("Student Firebase Auth provisioning failed:", authErr);
+          return NextResponse.json({ success: false, error: "Could not provision the student's Firebase login. No login account was created." }, { status: 502 });
         }
       }
 
@@ -363,7 +373,10 @@ export async function POST(request: NextRequest) {
         const tempPass = defaultPassword || `Std@${student.enrollmentNo.split("/").pop() || "2026"}`;
         let authUid = `usr_std_${student.id}`;
 
-        if (adminAuth) {
+        if (!adminAuth) {
+          return NextResponse.json({ success: false, error: "Student login provisioning is unavailable. Configure Firebase Admin credentials first." }, { status: 503 });
+        }
+        {
           try {
             const fbUser = await adminAuth.createUser({
               email: loginEmail,
@@ -376,8 +389,8 @@ export async function POST(request: NextRequest) {
               instituteId: student.instituteId,
               studentId: student.id,
             });
-          } catch (e) {
-            // Continue
+          } catch (e: any) {
+            return NextResponse.json({ success: false, error: `Could not provision login for ${student.fullName}: ${e.message}` }, { status: 502 });
           }
         }
 
@@ -398,6 +411,21 @@ export async function POST(request: NextRequest) {
 
         await dataStore.createStudentAccount(acc);
         if (adminDb) {
+          await adminDb.collection("users").doc(authUid).set({
+            uid: authUid,
+            name: student.fullName,
+            email: loginEmail,
+            role: "student",
+            instituteId: student.instituteId,
+            institute_id: student.instituteId,
+            studentId: student.id,
+            student_id: student.id,
+            studentCode: publicStudentId,
+            account_status: "active",
+            status: "active",
+            created_at: new Date().toISOString(),
+          }, { merge: true });
+          await adminDb.collection("institutes").doc(student.instituteId).collection("student_accounts").doc(authUid).set(acc, { merge: true });
           await adminDb.collection("student_login_mappings").doc(publicStudentId).set({
             uid: authUid,
             instituteId: student.instituteId,
@@ -463,7 +491,6 @@ export async function POST(request: NextRequest) {
       const updatedAcc = await dataStore.updateStudentAccount(acc.uid, {
         passwordStatus: "set",
         mustChangePassword: body.mustChangePassword ?? false,
-        temporaryPassword: generatedPassword,
       });
 
       dataStore.logAudit({
@@ -515,6 +542,11 @@ export async function POST(request: NextRequest) {
       const updatedAcc = await dataStore.updateStudentAccount(acc.uid, {
         accountStatus: targetStatus,
       });
+      if (adminDb) {
+        await adminDb.collection("users").doc(acc.uid).set({ account_status: targetStatus, status: targetStatus }, { merge: true });
+        await adminDb.collection("institutes").doc(acc.instituteId).collection("student_accounts").doc(acc.uid).set(updatedAcc, { merge: true });
+        await adminDb.collection("student_login_mappings").doc(acc.loginId).set({ accountStatus: targetStatus }, { merge: true });
+      }
 
       dataStore.logAudit({
         instituteId: acc.instituteId,
