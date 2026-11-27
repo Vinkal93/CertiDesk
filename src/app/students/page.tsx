@@ -64,11 +64,14 @@ export default function StudentsListPage() {
       });
 
       // Filter out archived students by default unless explicitly chosen
-      const list = selectedStatus === "Archived" 
-        ? res.students 
+      const list = selectedStatus === "Archived"
+        ? res.students
         : res.students.filter((s) => s.status !== "Archived");
+      const studentsWithPublicIds = await Promise.all(
+        list.map(async (student) => (await dataStore.ensureStudentCode(student.id)) || student)
+      );
 
-      setStudents(list);
+      setStudents(studentsWithPublicIds);
       setTotalCount(res.total);
     } catch (err) {
       console.error(err);
@@ -103,8 +106,9 @@ export default function StudentsListPage() {
 
   const handleExportCSV = () => {
     if (students.length === 0) return;
-    const headers = ["Enrollment No", "Full Name", "Father Name", "Course", "Batch", "Mobile", "Email", "Status", "Admission Date"];
+    const headers = ["Student ID", "Enrollment No", "Full Name", "Father Name", "Course", "Batch", "Mobile", "Email", "Status", "Admission Date"];
     const rows = students.map((s) => [
+      s.studentCode || "",
       s.enrollmentNo,
       `"${s.fullName}"`,
       `"${s.fatherName}"`,
@@ -228,7 +232,7 @@ export default function StudentsListPage() {
               <tr className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 <th className="py-3 px-4 w-12">#</th>
                 <th className="py-3 px-4">Student & Parents</th>
-                <th className="py-3 px-4">Enrollment No</th>
+                <th className="py-3 px-4">Student ID / Enrollment</th>
                 <th className="py-3 px-4">Course & Batch</th>
                 <th className="py-3 px-4">Contact</th>
                 <th className="py-3 px-4">Admission Date</th>
@@ -268,8 +272,9 @@ export default function StudentsListPage() {
                         </p>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-[11px] font-semibold text-brand-700">
-                      {student.enrollmentNo}
+                    <td className="py-3.5 px-4">
+                      <p className="font-mono text-[11px] font-bold text-brand-700">{student.studentCode || "—"}</p>
+                      <p className="font-mono text-[10px] text-slate-500 mt-0.5">{student.enrollmentNo}</p>
                     </td>
                     <td className="py-3.5 px-4">
                       <div>
