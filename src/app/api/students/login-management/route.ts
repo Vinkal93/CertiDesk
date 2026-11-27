@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
       if (!combined.some((c) => c.uid === acc.uid || c.enrollmentNo === acc.enrollmentNo)) {
         combined.push({
           studentId: acc.studentId,
+          studentCode: acc.loginId,
           fullName: acc.fullName,
           enrollmentNo: acc.enrollmentNo,
           courseName: "General Course",
