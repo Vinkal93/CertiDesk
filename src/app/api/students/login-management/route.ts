@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
 
       return {
         studentId: student.id,
+        studentCode: student.studentCode || "",
         fullName: student.fullName,
         enrollmentNo: student.enrollmentNo,
         courseName: student.courseName,
@@ -54,7 +55,8 @@ export async function GET(request: NextRequest) {
         instituteId: student.instituteId,
         hasAccount: Boolean(matchedAccount),
         uid: matchedAccount?.uid || null,
-        loginId: matchedAccount?.loginId || student.email || `${student.enrollmentNo.toLowerCase().replace(/[^a-z0-9]/g, "_")}@student.certidesk`,
+        loginId: matchedAccount?.loginId || student.studentCode || "",
+
         accountStatus: matchedAccount?.accountStatus || "inactive",
         passwordStatus: matchedAccount?.passwordStatus || "pending",
         mustChangePassword: matchedAccount?.mustChangePassword ?? true,
@@ -159,6 +161,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: "studentId or student details are required." }, { status: 400 });
       }
 
+      student = await dataStore.ensureStudentCode(student.id) || student;
+      const publicStudentId = student.studentCode || dataStore.generateStudentCode(student.instituteId);
+
       // Strict Tenant Guard
       if (payload.role !== "super_admin" && payload.instituteId !== student.instituteId) {
         return NextResponse.json(
@@ -177,9 +182,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Generate Clean Login Email / Identifier
-      const finalLoginEmail = (loginEmail || loginId || "").trim().toLowerCase() ||
-        (student.email && !student.email.includes("certidesk.pro") ? student.email.toLowerCase() : null) ||
-        `${student.enrollmentNo.toLowerCase().replace(/[^a-z0-9]/g, "_")}@student.certidesk`;
+      const finalLoginEmail = `${publicStudentId.toLowerCase()}@student.certidesk.pro`;
 
       let authUid = `usr_std_${student.id}`;
 
@@ -218,13 +221,13 @@ export async function POST(request: NextRequest) {
         uid: authUid,
         studentId: student.id,
         instituteId: student.instituteId,
-        loginId: finalLoginEmail,
+        loginId: publicStudentId,
+        authEmail: finalLoginEmail,
         fullName: student.fullName,
         enrollmentNo: student.enrollmentNo,
         accountStatus: "active",
         passwordStatus: "set",
         mustChangePassword: mustChangePassword ?? true,
-        temporaryPassword: initialPassword,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -237,10 +240,13 @@ export async function POST(request: NextRequest) {
           await adminDb.collection("users").doc(authUid).set({
             uid: authUid,
             name: student.fullName,
-            email: loginEmail,
+            email: finalLoginEmail,
             role: "student",
             institute_id: student.instituteId,
+            instituteId: student.instituteId,
             student_id: student.id,
+            studentId: student.id,
+            studentCode: publicStudentId,
             account_status: "active",
             created_at: new Date().toISOString(),
           }, { merge: true });
@@ -251,6 +257,14 @@ export async function POST(request: NextRequest) {
             .collection("student_accounts")
             .doc(authUid)
             .set(newAccount, { merge: true });
+          await adminDb.collection("student_login_mappings").doc(publicStudentId).set({
+            uid: authUid,
+            instituteId: student.instituteId,
+            studentId: student.id,
+            studentCode: publicStudentId,
+            authEmail: finalLoginEmail,
+            accountStatus: "active",
+          });
         } catch (dbErr: any) {
           console.warn("Firestore student account sync notice:", dbErr.message);
         }
@@ -263,13 +277,14 @@ export async function POST(request: NextRequest) {
         action: "STUDENT_LOGIN_CREATED",
         targetType: "student",
         targetId: student.id,
-        details: `Created login account for student ${student.fullName} (${student.enrollmentNo}). Login ID: ${loginEmail}`,
+        details: `Created login account for student ${student.fullName} (${publicStudentId}).`,
       });
 
       return NextResponse.json({
         success: true,
         message: `Login account created successfully for ${student.fullName}!`,
         account: newAccount,
+        studentLoginId: publicStudentId,
         temporaryPassword: initialPassword,
       });
     }
@@ -319,8 +334,9 @@ export async function POST(request: NextRequest) {
       const skipped: string[] = [];
 
       for (const sid of targetIds) {
-        const student = await dataStore.getStudentById(sid);
+        const student = await dataStore.ensureStudentCode(sid) || await dataStore.getStudentById(sid);
         if (!student) continue;
+        const publicStudentId = student.studentCode || dataStore.generateStudentCode(student.instituteId);
 
         // Strict Tenant Guard
         if (payload.role !== "super_admin" && payload.instituteId !== student.instituteId) {
@@ -333,17 +349,18 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const loginEmail = student.email || `${student.enrollmentNo.toLowerCase().replace(/[^a-z0-9]/g, "_")}@student.certidesk`;
+        const loginEmail = `${publicStudentId.toLowerCase()}@student.certidesk.pro`;
         const tempPass = defaultPassword || `Std@${student.enrollmentNo.split("/").pop() || "2026"}`;
-        const authUid = `usr_std_${student.id}`;
+        let authUid = `usr_std_${student.id}`;
 
         if (adminAuth) {
           try {
-            await adminAuth.createUser({
+            const fbUser = await adminAuth.createUser({
               email: loginEmail,
               password: tempPass,
               displayName: student.fullName,
             });
+            authUid = fbUser.uid;
             await adminAuth.setCustomUserClaims(authUid, {
               role: "student",
               instituteId: student.instituteId,
@@ -358,19 +375,29 @@ export async function POST(request: NextRequest) {
           uid: authUid,
           studentId: student.id,
           instituteId: student.instituteId,
-          loginId: loginEmail,
+          loginId: publicStudentId,
+          authEmail: loginEmail,
           fullName: student.fullName,
           enrollmentNo: student.enrollmentNo,
           accountStatus: "active",
           passwordStatus: "set",
           mustChangePassword: true,
-          temporaryPassword: tempPass,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
 
         await dataStore.createStudentAccount(acc);
-        created.push(student.fullName);
+        if (adminDb) {
+          await adminDb.collection("student_login_mappings").doc(publicStudentId).set({
+            uid: authUid,
+            instituteId: student.instituteId,
+            studentId: student.id,
+            studentCode: publicStudentId,
+            authEmail: loginEmail,
+            accountStatus: "active",
+          });
+        }
+        created.push(publicStudentId);
       }
 
       dataStore.logAudit({
