@@ -10,7 +10,7 @@ import { signInFirebase } from "@/lib/firebase/services";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loginFirebase } = useAuth();
   
   const [loginType, setLoginType] = useState<"institute" | "student">("student");
   
@@ -33,26 +33,29 @@ export default function LoginPage() {
 
     try {
       if (loginType === "student") {
-        const trimmedEnrollment = studentEnrollment.trim();
-        if (!trimmedEnrollment) {
-          throw new Error("Please enter your Student Enrollment Number (e.g. SBCI/ADCA/0268) or registered Email.");
+        const studentCode = studentEnrollment.trim().toUpperCase();
+        const studentPassword = studentDobOrPass;
+        if (!studentCode) {
+          throw new Error("Please enter your Student ID (e.g. STUSBCI00001).");
+        }
+        if (!studentPassword) {
+          throw new Error("Please enter your student password.");
+        }
+        if (!/^STU[A-Z0-9]{2,8}\\d{5}$/.test(studentCode)) {
+          throw new Error("Invalid Student ID format. Example: STUSBCI00001.");
         }
 
-        const matchedStudent = await dataStore.findStudentForLogin(trimmedEnrollment);
-        if (!matchedStudent) {
-          throw new Error("No student record found matching this Enrollment Number or Email. Please check with your center.");
+        // The public Student ID maps deterministically to a private Firebase Auth email.
+        // Password verification is performed by Firebase Authentication, never by a client-side lookup.
+        const authEmail = `${studentCode.toLowerCase()}@student.certidesk.pro`;
+        await loginFirebase(authEmail, studentPassword, "student");
+
+        const sessionResponse = await fetch("/api/auth/me", { cache: "no-store" });
+        const sessionData = await sessionResponse.json();
+        if (!sessionResponse.ok || !sessionData?.user?.studentId) {
+          throw new Error("Student session could not be verified. Please contact your institute.");
         }
-
-        // Authenticate student session
-        await login(
-          matchedStudent.email || `${matchedStudent.enrollmentNo.toLowerCase()}@student.certidesk`,
-          "student",
-          matchedStudent.instituteId,
-          matchedStudent.id,
-          matchedStudent.fullName
-        );
-
-        router.push(`/students/${matchedStudent.id}`);
+        router.push(`/students/${sessionData.user.studentId}`);
         return;
       }
 
@@ -256,7 +259,7 @@ export default function LoginPage() {
             <>
               <div>
                 <label className="font-semibold text-slate-700 block mb-1">
-                  Enrollment Number or Registered Mobile / Email
+                  Student ID
                 </label>
                 <div className="relative">
                   <GraduationCap className="w-4 h-4 text-purple-600 absolute left-3 top-2.5" />
@@ -264,32 +267,32 @@ export default function LoginPage() {
                     type="text"
                     value={studentEnrollment}
                     onChange={(e) => setStudentEnrollment(e.target.value)}
-                    placeholder="Enter student enrollment number or registered email"
+                    placeholder="Enter your Student ID, e.g. STUSBCI00001"
                     className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-purple-600 focus:border-transparent focus:outline-hidden transition-all text-slate-800"
                     required
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Enter your unique student enrollment number assigned by your center.
+                  Your Student ID is provided by your institute after admission.
                 </p>
               </div>
 
               <div>
                 <label className="font-semibold text-slate-700 block mb-1">
-                  Date of Birth / Access Key
+                  Student Password
                 </label>
                 <div className="relative">
                   <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   <input
-                    type="text"
+                    type={showPassword ? "text" : "password"}
                     value={studentDobOrPass}
                     onChange={(e) => setStudentDobOrPass(e.target.value)}
-                    placeholder="YYYY-MM-DD or student password"
+                    placeholder="Enter your password"
                     className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-purple-600 focus:border-transparent focus:outline-hidden transition-all text-slate-800"
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Your registered date of birth (e.g. 2004-05-12) or access password.
+                  Use the password provided by your institute. Change your temporary password after your first login.
                 </p>
               </div>
             </>
