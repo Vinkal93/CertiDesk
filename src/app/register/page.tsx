@@ -32,6 +32,7 @@ export default function RegisterInstitutePage() {
 
   // Form Fields - Institute Info
   const [instituteName, setInstituteName] = useState("");
+  const [instituteCode, setInstituteCode] = useState("");
   const [instituteType, setInstituteType] = useState("Computer Education Institute");
   const [ownerName, setOwnerName] = useState("");
   const [officialEmail, setOfficialEmail] = useState("");
@@ -58,6 +59,7 @@ export default function RegisterInstitutePage() {
   const [error, setError] = useState<string | null>(null);
   const [registeredData, setRegisteredData] = useState<{
     instituteId: string;
+    instituteCode: string;
     instituteName: string;
     adminLoginId: string;
     adminEmail: string;
@@ -118,6 +120,7 @@ export default function RegisterInstitutePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           instituteName: instituteName.trim(),
+          code: instituteCode.trim() || undefined,
           instituteType,
           ownerName: ownerName.trim(),
           officialEmail: officialEmail.trim(),
@@ -146,6 +149,7 @@ export default function RegisterInstitutePage() {
 
       setRegisteredData({
         instituteId: data.credentials.instituteId,
+        instituteCode: data.institute.code,
         instituteName: data.institute.name,
         adminLoginId: data.credentials.adminLoginId,
         adminEmail: data.credentials.adminEmail,
@@ -230,6 +234,14 @@ export default function RegisterInstitutePage() {
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <span className="text-slate-500 font-sans font-semibold">Institute Name:</span>
                 <span className="font-bold text-slate-900 font-sans">{registeredData.instituteName}</span>
+              </div>
+
+              <div className="flex items-center justify-between bg-indigo-50 p-2.5 rounded-xl border border-indigo-100">
+                <div>
+                  <span className="text-[10px] text-indigo-500 block font-sans uppercase font-bold tracking-wider">Unique Institute Code</span>
+                  <span className="text-base font-black text-indigo-900 tracking-wide">{registeredData.instituteCode}</span>
+                </div>
+                <button type="button" onClick={() => copyToClipboard(registeredData.instituteCode, "id")} className="px-3 py-1.5 bg-white border border-indigo-100 text-indigo-700 font-sans text-xs font-bold rounded-lg">Copy Code</button>
               </div>
 
               {/* Unique Institute ID with Copy Button */}
@@ -362,6 +374,19 @@ export default function RegisterInstitutePage() {
                       required
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Unique Institute Code (Optional)</label>
+                  <input
+                    type="text"
+                    value={instituteCode}
+                    onChange={(e) => setInstituteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))}
+                    placeholder="e.g. SBCI (auto-generated if blank)"
+                    maxLength={8}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-mono font-semibold uppercase focus:ring-2 focus:ring-slate-900 focus:outline-hidden"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Must be globally unique. You can use 2–8 letters/numbers.</p>
                 </div>
 
                 <div>
