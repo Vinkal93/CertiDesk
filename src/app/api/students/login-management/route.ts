@@ -3,6 +3,7 @@ import { verifySessionToken } from "@/lib/auth/token";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { dataStore } from "@/lib/db";
 import { StudentAccount } from "@/types";
+import { allocateStudentCodeForInstitute } from "@/lib/students/identity.server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -161,8 +162,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: "studentId or student details are required." }, { status: 400 });
       }
 
-      student = await dataStore.ensureStudentCode(student.id) || student;
-      const publicStudentId = student.studentCode || dataStore.generateStudentCode(student.instituteId);
+      const allocatedCode = student.studentCode ? undefined : await allocateStudentCodeForInstitute(student.instituteId);
+      student = await dataStore.ensureStudentCode(student.id, allocatedCode || undefined) || student;
+      const publicStudentId = student.studentCode || allocatedCode || dataStore.generateStudentCode(student.instituteId);
 
       // Strict Tenant Guard
       if (payload.role !== "super_admin" && payload.instituteId !== student.instituteId) {
@@ -296,8 +298,14 @@ export async function POST(request: NextRequest) {
 
       if (Array.isArray(inputStudents) && inputStudents.length > 0) {
         for (const st of inputStudents) {
+          const targetInstituteId = payload.instituteId || body.instituteId;
+          if (!targetInstituteId) {
+            return NextResponse.json({ success: false, error: "Select an institute before bulk creating student logins." }, { status: 400 });
+          }
+          const allocatedCode = await allocateStudentCodeForInstitute(targetInstituteId);
           const studentRes = await dataStore.createStudent({
-            instituteId: payload.instituteId || "SBCI1001",
+            instituteId: targetInstituteId,
+            studentCode: allocatedCode || undefined,
             fullName: st.fullName || "Student",
             fatherName: st.fatherName || "Father",
             motherName: st.motherName || "Mother",
@@ -334,9 +342,11 @@ export async function POST(request: NextRequest) {
       const skipped: string[] = [];
 
       for (const sid of targetIds) {
-        const student = await dataStore.ensureStudentCode(sid) || await dataStore.getStudentById(sid);
+        let student = await dataStore.getStudentById(sid);
         if (!student) continue;
-        const publicStudentId = student.studentCode || dataStore.generateStudentCode(student.instituteId);
+        const allocatedCode = student.studentCode ? undefined : await allocateStudentCodeForInstitute(student.instituteId);
+        student = await dataStore.ensureStudentCode(sid, allocatedCode || undefined) || student;
+        const publicStudentId = student.studentCode || allocatedCode || dataStore.generateStudentCode(student.instituteId);
 
         // Strict Tenant Guard
         if (payload.role !== "super_admin" && payload.instituteId !== student.instituteId) {
