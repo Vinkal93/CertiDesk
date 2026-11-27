@@ -1709,7 +1709,7 @@ class DataStore {
 
   // --- Student Accounts & Login Access Management ---
   async getStudentAccounts(instituteId: string): Promise<StudentAccount[]> {
-    return this.studentAccounts.filter((sa) => sa.instituteId === instituteId);
+    return instituteId ? this.studentAccounts.filter((sa) => sa.instituteId === instituteId) : [...this.studentAccounts];
   }
 
   async getStudentAccount(uidOrStudentId: string): Promise<StudentAccount | null> {
