@@ -55,7 +55,7 @@ export default function LoginPage() {
         if (!sessionResponse.ok || !sessionData?.user?.studentId) {
           throw new Error("Student session could not be verified. Please contact your institute.");
         }
-        router.push(`/students/${sessionData.user.studentId}`);
+        router.push("/student-portal");
         return;
       }
 
