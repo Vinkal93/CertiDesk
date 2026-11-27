@@ -73,7 +73,8 @@ export default function StudentProfilePage() {
     if (!studentId) return;
     setLoading(true);
     try {
-      const s = await dataStore.getStudentById(studentId);
+      const existing = await dataStore.getStudentById(studentId);
+      const s = existing ? (await dataStore.ensureStudentCode(studentId)) || existing : null;
       if (!s) return;
       setStudent(s);
 
@@ -298,6 +299,10 @@ export default function StudentProfilePage() {
                 </span>
               </div>
 
+              {/* Public Student ID and academic enrollment number */}
+              <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-purple-100">
+                <span className="font-mono">Student ID: <strong>{student.studentCode || "—"}</strong></span>
+              </div>
               {/* Enrollment with copy and verify */}
               <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-purple-200">
                 <span className="font-mono">
