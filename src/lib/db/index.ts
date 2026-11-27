@@ -32,7 +32,8 @@ import {
   saveStudentFirestore,
   saveTransactionFirestore,
   saveInstituteFirestore,
-  updateInstituteWalletFirestore
+  updateInstituteWalletFirestore,
+  allocateStudentCodeFirestore
 } from "@/lib/firebase/services";
 
 const STORAGE_KEYS = {
@@ -1083,7 +1084,7 @@ class DataStore {
     const newStudent: Student = {
       ...data,
       id: `std_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      studentCode: data.studentCode || this.generateStudentCode(data.instituteId),
+      studentCode: data.studentCode || (typeof window !== "undefined" ? await allocateStudentCodeFirestore(data.instituteId, inst.code) : this.generateStudentCode(data.instituteId)),
       enrollmentNo,
       status: data.status || "Active",
       admissionFeeCharged: admissionFee,
