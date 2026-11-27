@@ -11,7 +11,7 @@ export interface InstituteSettings {
 export interface Institute {
   id: string; // e.g., 'SBCI1001'
   name: string; // e.g., 'SBCI Computer Institute'
-  code: string; // e.g., 'SBCI'
+  code: string; // globally unique institute code, e.g. 'SBCI'
   status: AccountStatus;
   ownerName: string; // e.g., 'Vinkal Prajapati'
   email: string;
@@ -34,7 +34,8 @@ export interface StudentAccount {
   uid: string;
   studentId: string;
   instituteId: string;
-  loginId: string;
+  loginId: string; // public student ID, e.g. STUSBCI00001
+  authEmail?: string; // private Firebase Auth alias; never shown as the student's login ID
   fullName: string;
   enrollmentNo: string;
   accountStatus: 'active' | 'inactive';
@@ -123,9 +124,10 @@ export interface UserProfile {
 export type StudentStatus = 'Active' | 'Completed' | 'Archived' | 'Dropped';
 
 export interface Student {
-  id: string;
+  id: string; // internal immutable database ID
+  studentCode?: string; // public login/student ID, e.g. STUSBCI00001
   instituteId: string;
-  enrollmentNo: string; // e.g. 'SBCI/ADCA/0268'
+  enrollmentNo: string; // academic enrollment number, e.g. 'SBCI/ADCA/0268'
   fullName: string;
   fatherName: string;
   motherName: string;
