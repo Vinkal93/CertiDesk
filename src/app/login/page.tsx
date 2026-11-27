@@ -73,6 +73,7 @@ export default function LoginPage() {
       const matched = allInstitutes.find(
         (i) =>
           i.id.toUpperCase() === trimmedId.toUpperCase() ||
+          i.code.toUpperCase() === trimmedId.toUpperCase() ||
           i.email.toLowerCase() === trimmedId.toLowerCase()
       );
 
@@ -218,13 +219,13 @@ export default function LoginPage() {
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="e.g. SBCI1001 or institute@gmail.com"
+                    placeholder="e.g. SBCI or SBCI-2026-00001 or email"
                     className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-slate-900 focus:border-transparent focus:outline-hidden transition-all text-slate-800"
                     required
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Enter the Institute ID (e.g. SBCI1001) or Email assigned to your center.
+                  Enter your unique Institute Code (e.g. SBCI), full Institute ID, or registered email.
                 </p>
               </div>
 
