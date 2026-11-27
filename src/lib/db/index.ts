@@ -1043,11 +1043,11 @@ class DataStore {
     return `STU${code}${String(maxSequence + 1).padStart(5, "0")}`;
   }
 
-  async ensureStudentCode(studentId: string): Promise<Student | null> {
+  async ensureStudentCode(studentId: string, allocatedCode?: string): Promise<Student | null> {
     const index = this.students.findIndex((item) => item.id === studentId);
     if (index < 0) return null;
     if (!this.students[index].studentCode) {
-      this.students[index] = { ...this.students[index], studentCode: this.generateStudentCode(this.students[index].instituteId), updatedAt: new Date().toISOString() };
+      this.students[index] = { ...this.students[index], studentCode: allocatedCode || this.generateStudentCode(this.students[index].instituteId), updatedAt: new Date().toISOString() };
       this.saveToStorage(STORAGE_KEYS.STUDENTS, this.students);
       saveStudentFirestore(this.students[index]).catch(console.warn);
     }
