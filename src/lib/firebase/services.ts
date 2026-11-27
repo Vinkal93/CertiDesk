@@ -9,7 +9,8 @@ import {
   orderBy, 
   onSnapshot, 
   serverTimestamp,
-  updateDoc
+  updateDoc,
+  runTransaction
 } from "firebase/firestore";
 import { 
   signInWithEmailAndPassword, 
@@ -97,6 +98,21 @@ export async function seedFirestoreIfEmpty() {
   } catch (err) {
     console.warn("Firestore auto-seed notice (offline or permission):", err);
   }
+}
+
+// Allocate a per-institute public Student ID using a Firestore transaction.
+// This counter is shared across browsers and server instances, preventing duplicate IDs.
+export async function allocateStudentCodeFirestore(instituteId: string, instituteCode: string): Promise<string> {
+  const counterRef = doc(db, "institutes", instituteId, "counters", "student_ids");
+  const cleanCode = (instituteCode || "INST").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "INST";
+  const sequence = await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(counterRef);
+    const current = snapshot.exists() ? Number(snapshot.data().lastSequence) || 0 : 0;
+    const next = current + 1;
+    transaction.set(counterRef, { lastSequence: next, updatedAt: new Date().toISOString() }, { merge: true });
+    return next;
+  });
+  return `STU${cleanCode}${String(sequence).padStart(5, "0")}`;
 }
 
 // --- Realtime Firestore Subscriptions ---
