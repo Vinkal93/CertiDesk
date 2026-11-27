@@ -477,8 +477,11 @@ export async function POST(request: NextRequest) {
       }
 
       const generatedPassword = body.newPassword || `Pass@${Math.floor(100000 + Math.random() * 900000)}`;
+      if (!adminAuth) {
+        return NextResponse.json({ success: false, error: "Password reset is unavailable. Configure Firebase Admin credentials first." }, { status: 503 });
+      }
 
-      if (adminAuth) {
+      {
         try {
           await adminAuth.updateUser(acc.uid, {
             password: generatedPassword,
@@ -529,19 +532,28 @@ export async function POST(request: NextRequest) {
 
       const targetStatus: "active" | "inactive" = body.status === "active" ? "active" : "inactive";
 
-      if (adminAuth) {
-        try {
-          await adminAuth.updateUser(acc.uid, {
-            disabled: targetStatus === "inactive",
-          });
-        } catch (e) {
-          // Continue
-        }
+      if (!adminAuth) {
+        return NextResponse.json({ success: false, error: "Account status management is unavailable. Configure Firebase Admin credentials first." }, { status: 503 });
+      }
+      try {
+        await adminAuth.updateUser(acc.uid, {
+          disabled: targetStatus === "inactive",
+        });
+      } catch (e: any) {
+        return NextResponse.json({ success: false, error: "Firebase account status could not be updated." }, { status: 502 });
       }
 
       const updatedAcc = await dataStore.updateStudentAccount(acc.uid, {
         accountStatus: targetStatus,
       });
+      if (adminDb) {
+        await adminDb.collection("users").doc(acc.uid).set({
+          account_status: targetStatus,
+          status: targetStatus,
+        }, { merge: true });
+        await adminDb.collection("institutes").doc(acc.instituteId).collection("student_accounts").doc(acc.uid).set(updatedAcc, { merge: true });
+        await adminDb.collection("student_login_mappings").doc(acc.loginId).set({ accountStatus: targetStatus }, { merge: true });
+      }
       if (adminDb) {
         await adminDb.collection("users").doc(acc.uid).set({ account_status: targetStatus, status: targetStatus }, { merge: true });
         await adminDb.collection("institutes").doc(acc.instituteId).collection("student_accounts").doc(acc.uid).set(updatedAcc, { merge: true });
