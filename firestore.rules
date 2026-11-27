@@ -35,6 +35,21 @@ service cloud.firestore {
       match /student_accounts/{accountUid} {
         allow read, write: if isTenantAdmin(instituteId);
       }
+
+      // Atomic institute-scoped student ID counter.
+      // Clients may only advance the sequence by exactly one; deletion is forbidden.
+      match /counters/{counterId} {
+        allow read: if isTenantAdmin(instituteId);
+        allow create: if isTenantAdmin(instituteId)
+          && counterId == 'student_ids'
+          && request.resource.data.keys().hasOnly(['lastSequence', 'updatedAt'])
+          && request.resource.data.lastSequence == 1;
+        allow update: if isTenantAdmin(instituteId)
+          && counterId == 'student_ids'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSequence', 'updatedAt'])
+          && request.resource.data.lastSequence == resource.data.lastSequence + 1;
+        allow delete: if false;
+      }
     }
 
     // Student ID to Firebase Auth alias mappings are server-only.
